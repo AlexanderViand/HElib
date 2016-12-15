@@ -77,10 +77,12 @@ check: Test_General_x Test_LinPoly_x Test_Permutations_x Test_PolyEval_x Test_Re
 	./Test_LinPoly_x
 	./Test_Permutations_x
 	./Test_PolyEval_x
+	./Test_PolyEval_x p=7 r=2 d=34
 	./Test_Replicate_x m=1247
 	./Test_EvalMap_x mvec="[7 3 221]" gens="[3979 3095 3760]" ords="[6 2 -8]"
 	./Test_extractDigits_x m=2047 p=5
 	./Test_bootstrapping_x
+	./Test_bootstrapping_x p=7
 	./Test_extractCoeffs_x
 
 test: $(TESTPROGS)
