@@ -36,13 +36,17 @@
 using namespace std;
 
 
+FHEcontext context(1,2,3); // dummy context
+FHEPubKey pubKey = FHESecKey(context); // dummy key
+
 /** This class represents a bit. It carries a plaintext value, a ciphertext value and a symbolic name/equation **/
 class Bit {
 public:
 	string name;
 	bool plaintext;
-	float ciphertext; //dummy for Ctxt
+	float  ciphertext; 
 	int multiplications;
+	
 
 
 	Bit(string name, bool plaintext) {
@@ -946,28 +950,28 @@ int main(int argc, char *argv[])
 
   setTimersOn();
 
-  FHEcontext* context = new FHEcontext(m, p, r);
-  buildModChain(*context, /*L=*/levels);
+  context = FHEcontext(m, p, r);
+  buildModChain(context, /*L=*/levels);
   // cout << context << endl;
   // context.zMStar.printout();
   // cout << endl;
 
   cout << "Generating keys and key-switching matrices... " << std::flush;
-  FHESecKey* secretKey = new FHESecKey(*context);
+  FHESecKey* secretKey = new FHESecKey(context);
   secretKey->GenSecKey(/*w=*/64);// A Hamming-weight-w secret key
   addFrbMatrices(*secretKey); // compute key-switching matrices that we need
   add1DMatrices(*secretKey); // compute key-switching matrices that we need
-  const FHEPubKey* publicKey = secretKey;  
+  FHEPubKey publicKey = *secretKey;  
 
   setTimersOff();
   printAllTimers();
   cout << "done\n";
   resetAllTimers();
 
-  EncryptedArray ea = *(context->ea);
+  EncryptedArray ea = *(context.ea);
   ea.buildLinPolyMat(false);
   
-  Ctxt ctxt(*publicKey);
+  Ctxt ctxt(publicKey);
   NewPlaintextArray ptxt(ea);
   random(ea, ptxt);
   // // ea.encrypt(ctx:wqt, publicKey, ptxt);
