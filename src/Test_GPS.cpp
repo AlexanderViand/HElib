@@ -45,10 +45,10 @@ public:
 	int multiplications;
 
 
-	Bit(string name, bool plaintext, float ciphertext) {
+	Bit(string name, bool plaintext) {
 		this->name = name;
 		this->plaintext = plaintext;
-		this->ciphertext = ciphertext;
+		this->ciphertext = 0;
 		this->multiplications = 0;
 	}
 
@@ -156,7 +156,7 @@ vector<Bit> gen(int n, string name)
 		stringstream ss;
 		bool val = (rand() % 2) == 1;
 		ss << name << "[" << i << "]";
-		x.push_back(Bit(ss.str(), val, val));
+		x.push_back(Bit(ss.str(), val));
 	}
 	return x;
 }
@@ -207,7 +207,7 @@ int maxmult(vector<Bit> &x)
 class FTxt {
 
 public:
-	Bit bit = Bit("[UNDEFINED]", 0, 0);
+	Bit bit = Bit("[UNDEFINED]", 0);
 	int multdepth;
 
 	FTxt(Bit bit, int multdepth) {
@@ -374,14 +374,14 @@ void adder(vector<Bit> &x, vector<Bit> &y, Bit &c0) {
 	for (int i = 1; i <= n + 1; ++i) {
 		stringstream ss;
 		ss << "c[" << i << "]";
-		c.push_back(Bit(ss.str(), 0, 0));
+		c.push_back(Bit(ss.str(), 0));
 	}
 
 	// We store the 'reusable elements' of each 'slot' in here
 	// see updateslot and evalSlots for more information
 	vector<vector<FTxt> > elements(n + 1, vector<FTxt>());
 	for (int i = 0; i<n + 1; ++i) {
-		FTxt undef = FTxt(Bit("[UNDEFINED]", 0, 0), 0);
+		FTxt undef = FTxt(Bit("[UNDEFINED]", 0), 0);
 		elements[i].push_back(undef);
 	}
 
@@ -429,7 +429,7 @@ void adder(vector<Bit> &x, vector<Bit> &y, Bit &c0) {
 void subtract(vector<Bit> &a, vector<Bit> &b)
 {
 	// first, let's invert b
-	Bit onebit = Bit("ONE", true, 1);
+	Bit onebit = Bit("ONE", true);
 	for (size_t i = 0; i < b.size(); i++)
 	{
 		b[i] += onebit; //XOR with 1 is negation
@@ -461,7 +461,7 @@ void square(vector<Bit> &x) {
 	//cout << "n = " << n << endl;
 
 	// Expanding x by two to the right makes the last pyramid step use the same code as the previous longest
-	Bit zerobit = Bit("ZERO", 0, 0);
+	Bit zerobit = Bit("ZERO", 0);
 	x.push_back(zerobit);
 	x.push_back(zerobit);
 
@@ -667,7 +667,7 @@ void testAdder(int n) {
 
 	vector<Bit> x;
 	vector<Bit> y;
-	Bit c0 = Bit("c[0]", 0, 0);
+	Bit c0 = Bit("c[0]", 0);
 
 	// Generate x (and calculate decimal value)
 	x = gen(n, "x");
@@ -854,7 +854,7 @@ void testChain()
 	cout << endl;
 
 	// And add the results
-	Bit zerobit = Bit("c[0]", false, 0); // carry in
+	Bit zerobit = Bit("c[0]", false); // carry in
 	adder(x1, y1, zerobit);
 	long long d2val = val2(x1);
 	cout << "d2: " << printvbp(x1) << " (" << d2val << ") ";
@@ -874,33 +874,6 @@ void testChain()
 
 	// Find out the multiplication depth:
 	cout << "multiplication depth: " << maxmult(x1) << endl;
-}
-
-/**
- * @brief Extract coefficients from ciphertext polynomial
-
- * @param coeffs extracted coefficients
- * @param ctxt ciphertext
- * @param n extract "n" lowest degree coefficients
- */
-void extractCoeffs(EncryptedArray& ea, vector<Ctxt>& coeffs, Ctxt& ctxt, long n) {
-  long d = ea.getDegree();
-  if (d < n) n = d;
-
-  coeffs.clear();
-
-  vector<Ctxt> conj;  
-  for (int coeff = 0; coeff < n; ++coeff) {
-    vector<ZZX> LM(d);
-    LM[coeff] = ZZX(0, 1);
-
-    // "building" the linearized-polynomial coefficients
-    vector<ZZX> C(d);
-    ea.buildLinPolyCoeffs(C, LM);
-
-    coeffs.push_back(ctxt);
-    applyLinPoly1(ea, coeffs[coeff], C, conj);
-  }
 }
 
 
