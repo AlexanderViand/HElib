@@ -876,6 +876,31 @@ void testChain()
 	cout << "multiplication depth: " << maxmult(x1) << endl;
 }
 
+/**
+* @brief Extract coefficients from ciphertext polynomial
+* @param coeffs extracted coefficients
+* @param ctxt ciphertext
+* @param n extract "n" lowest degree coefficients
+*/
+void extractCoeffs(EncryptedArray& ea, vector<Ctxt>& coeffs, Ctxt& ctxt, long n) {
+  long d = ea.getDegree();
+  if (d < n) n = d;
+
+  coeffs.clear();
+
+  vector<Ctxt> conj;  
+  for (int coeff = 0; coeff < n; ++coeff) {
+    vector<ZZX> LM(d);
+    LM[coeff] = ZZX(0, 1);
+
+    // "building" the linearized-polynomial coefficients
+    vector<ZZX> C(d);
+    ea.buildLinPolyCoeffs(C, LM);
+
+    coeffs.push_back(ctxt);
+    applyLinPoly1(ea, coeffs[coeff], C, conj);
+  }
+}
 
 int main(int argc, char *argv[]) 
 {
