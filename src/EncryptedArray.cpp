@@ -529,7 +529,7 @@ EncryptedArrayDerived<type>::buildLinPolyCoeffs(vector<RX>& C,
     vector<RX> R;
     Vec<RE> RR;
     for (int i = 0; i < d; ++i) {
-      if (not IsZero(LL[i])) {
+      if (! IsZero(LL[i])) {
         //may be should store computed rows for future reuse?
         plaintextConjugates(R, rep(linPolyMatrix->b[i][0]), d, zMStar, 
             RE::modulus());

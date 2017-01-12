@@ -24,6 +24,9 @@
 
 NTL_CLIENT
 
+#ifdef _MSC_BUILD
+#define M_PI 3.14159265359 //probably needs more precision?
+#endif
 
 
 //evaluate f at e^{2 pi i/m}, returning a complex number

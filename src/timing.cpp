@@ -36,7 +36,11 @@ unsigned long GetTimerClock()
 const unsigned long CLOCK_SCALE = 1000000UL;
 
 #else
+#ifdef _MSC_BUILD
+#pragma message("using low-resolution clock")
+#else
 #warning "using low-resolution clock"
+#endif
 
 // NOTE: the clock used by clock_gettime seems to be much higher
 // resolution than that used by clock.

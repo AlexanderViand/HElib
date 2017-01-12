@@ -22,7 +22,7 @@
 #include <list>
 #include <sstream>
 using namespace std;
-#if (__cplusplus>199711L)
+#if (__cplusplus>199711L || defined _MSC_BUILD)
 #include <memory>
 #else
 #include <tr1/memory>

@@ -88,7 +88,7 @@ inline void setAutomorphVals2(std::set<long>* aVals)
 inline bool isSetAutomorphVals2() { return FHEglobals::automorphVals2!=NULL; }
 inline void recordAutomorphVal2(long k) { FHEglobals::automorphVals2->insert(k); }
 
-#if (__cplusplus>199711L)
+#if (__cplusplus>199711L || defined _MSC_BUILD)
 #include <memory>
 #include <unordered_map>
 #else

@@ -26,7 +26,6 @@ using namespace std;
  * @brief Indexing into a hypercube
  **/
 class Cube {
-class Cube {
 private:
    vector<int> dims;  // dims[i] is the size along the i'th diemnsion
    vector<int> prods; // prods[i] = \prod_{j=i}^{n-1} dims[i]

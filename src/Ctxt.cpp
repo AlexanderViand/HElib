@@ -17,6 +17,7 @@
 #include "Ctxt.h"
 #include "FHE.h"
 #include "timing.h"
+#include <algorithm>
 
 // A hack for recording required automorphisms (see NumbTh.h)
 std::set<long>* FHEglobals::automorphVals = NULL;
@@ -1156,7 +1157,7 @@ void totalProduct(Ctxt& out, const vector<Ctxt>& v)
 // the lower-level *= operator and does only one re-linearization at the end.
 void innerProduct(Ctxt& result, const vector<Ctxt>& v1, const vector<Ctxt>& v2)
 {
-  long n = min(v1.size(), v2.size());
+  long n = std::min(v1.size(), v2.size());
   if (n<=0) {
     result.clear();
     return;
@@ -1174,7 +1175,7 @@ void innerProduct(Ctxt& result, const vector<Ctxt>& v1, const vector<Ctxt>& v2)
 void innerProduct(Ctxt& result,
 		  const vector<Ctxt>& v1, const vector<DoubleCRT>& v2)
 {
-  long n = min(v1.size(), v2.size());
+  long n = std::min(v1.size(), v2.size());
   if (n<=0) {
     result.clear();
     return;
@@ -1190,7 +1191,7 @@ void innerProduct(Ctxt& result,
 void innerProduct(Ctxt& result,
 		  const vector<Ctxt>& v1, const vector<ZZX>& v2)
 {
-  long n = min(v1.size(), v2.size());
+  long n = std::min(v1.size(), v2.size());
   if (n<=0) {
     result.clear();
     return;

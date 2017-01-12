@@ -30,7 +30,11 @@
 #warning "Polynomial Arithmetic Implementation in AltCRT.cpp"
 #include "AltCRT.cpp"
 #else
+#ifdef _MSC_BUILD
+#pragma message("Polynomial Arithmetic Implementation in DoubleCRT.cpp")
+#else
 #warning "Polynomial Arithmetic Implementation in DoubleCRT.cpp"
+#endif
 
 #include <NTL/ZZVec.h>
 #include <NTL/BasicThreadPool.h>
