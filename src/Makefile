@@ -18,7 +18,7 @@ CC = g++
 #CFLAGS = -g -O2 -Wfatal-errors -Wshadow -Wall -I/usr/local/include 
 CFLAGS = -g -O2 -std=c++11 -pthread -DFHE_THREADS -DFHE_DCRT_THREADS -DFHE_BOOT_THREADS
 #CFLAGS = -g -O2 -std=c++11 -pthread
-#CFLAGS = -g -O2 -std=c++11
+#CFLAGS = -g -O2 -std=c++11 
 
 # useful flags:
 #   -std=c++11
@@ -51,7 +51,7 @@ $(info )
 
 LD = g++
 AR = ar
-ARFLAGS=ruv
+ARFLAGS=rv
 GMP=-lgmp 
 LDLIBS = -L/usr/local/lib -lntl $(GMP) -lm
 
@@ -66,13 +66,12 @@ TESTPROGS = Test_General_x Test_PAlgebra_x Test_IO_x Test_Replicate_x Test_LinPo
 
 all: fhe.a
 
-check: Test_General_x Test_LinPoly_x Test_Permutations_x Test_PolyEval_x Test_Replicate_x Test_EvalMap_x Test_extractDigits_x Test_bootstrapping_x Test_extractCoeffs_x
+check: Test_General_x Test_LinPoly_x Test_Permutations_x Test_PolyEval_x Test_Replicate_x Test_EvalMap_x Test_extractDigits_x Test_bootstrapping_x
 	./Test_General_x R=1 k=10 p=2 r=2
 	./Test_General_x R=1 k=10 p=2 d=2
 	./Test_General_x R=2 k=10 p=7 r=2
 	./Test_LinPoly_x
 	./Test_Permutations_x
-	./Test_PolyEval_x
 	./Test_PolyEval_x p=7 r=2 d=34
 	./Test_Replicate_x m=1247
 	./Test_EvalMap_x mvec="[7 3 221]" gens="[3979 3095 3760]" ords="[6 2 -8]"
