@@ -1,6 +1,26 @@
 HElib
 =====
 
+###Windows Branch
+
+This branch is a highly experimental Windows-buildable version of HElib. 
+
+It is designed to work with Microsoft Visual Studio 2015 and requires the Windows version of NTL (WinNTL). 
+Note that WinNTL also requires some customization to successfully compile (and especially link) in MSVS2015. 
+Since threading in NTL requires GMP which we do not use we also cannot use HElib's threading which depends on NTL's threading support.
+
+The goal of this Windows version is *not* to run HElib efficiently on Windows, but only to allow Visual Studio to be employed during code development. It is highly recommended that HElib be run on a \*nix system, with the unix NTL distribution, GMP and threading, especially for performance benchmarking.
+
+While there is a GMP fork for Windows (MPIR), this sadly isn't compatible with NTL and so we don't use GMP in NTL.
+The issue is that NTL requires the GMP limb size to match either an int or long which on x64 usually means 32 or 64 bits, respectively.
+But because Windows x64 chooses to use a 32 bit long, MPIR defines limb sizes on Windows x64 to be long long which throws off
+NTL's GMP-limb-size checker.
+
+It might be possible to either recompile GMP/MPIR with a suitable limb size or alternatively it might be acceptable to simply disable the NTL checks, assuming it can be verified that NTL will work correctly with a long long limb as long as it is still 64bits. 
+Since I did not care about performance, I simply removed the GMP based implementation. In order to get MSVS to properly link NTL, I also needed some slight modifications to lip.h / lip.c / c_lip.h / c_lip_impl.h and removed g_lip.h / g_lip_impl.h
+
+HElib
+====
 HElib is a software library that implements [homomorphic encryption] [6] (HE).
 Currently available is an implementation of the
 [Brakerski-Gentry-Vaikuntanathan] [1] (BGV) scheme, along with many
