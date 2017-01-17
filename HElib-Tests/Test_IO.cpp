@@ -18,7 +18,11 @@
  * (context, keys, ciphertexts).
  */
 #include <fstream>
+#ifdef _MSC_BUILD 
+#include <io.h>
+#else 
 #include <unistd.h>
+#endif
 
 #include <NTL/ZZX.h>
 #include <NTL/vector.h>
