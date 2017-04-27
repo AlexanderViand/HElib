@@ -1,9 +1,7 @@
-HElib
-=====
+HElib - Windows Branch
+======
 
-###Windows Branch
-
-This branch is a highly experimental Windows-buildable version of HElib. 
+This branch is a highly experimental (unofficial) Windows-buildable version of HElib.
 
 It is designed to work with Microsoft Visual Studio 2015 and requires the Windows version of NTL (WinNTL). 
 Note that WinNTL also requires some customization to successfully compile (and especially link) in MSVS2015. 
@@ -19,7 +17,7 @@ NTL's GMP-limb-size checker.
 It might be possible to either recompile GMP/MPIR with a suitable limb size or alternatively it might be acceptable to simply disable the NTL checks, assuming it can be verified that NTL will work correctly with a long long limb as long as it is still 64bits. 
 Since I did not care about performance, I simply removed the GMP based implementation. In order to get MSVS to properly link NTL, I also needed some slight modifications to lip.h / lip.c / c_lip.h / c_lip_impl.h and removed g_lip.h / g_lip_impl.h
 
-HElib
+HElib (original README.md)
 ====
 HElib is a software library that implements [homomorphic encryption] [6] (HE).
 Currently available is an implementation of the
