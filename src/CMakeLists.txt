@@ -1,13 +1,33 @@
 cmake_minimum_required(VERSION 3.8)
 project(fhe)
 
-option(DFHE_THREADS
+option(NO_HALF_SIZE_PRIME  "tells helib to not use the half size primes in the prime chain" OFF)
+
+option(FHE_THREADS
         "tells helib to enable generic multithreading capabilities; must be used with a thread-enabled NTL" ON)
 
-option(DFHE_BOOT_THREADS
-        "tells helib to use a multithreading strategy for bootstrapping; requires DFHE_THREADS (see above)" ON)
+include("CMakeDependentOption")
+
+cmake_dependent_option(FHE_BOOT_THREADS "tells helib to use a multithreading strategy for bootstrapping; requires DFHE_THREADS (see above)" ON
+        "FHE_THREADS" OFF)
 
 set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -Og -Wfatal-errors -Wshadow -Wall")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+
+
+if(FHE_THREADS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DFHE_THREADS" )
+endif(FHE_THREADS)
+
+if(FHE_BOOT_THREADS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DFHE_BOOT_THREADS" )
+endif(FHE_BOOT_THREADS)
+
+if(NO_HALF_SIZE_PRIME)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNO_HALF_SIZE_PRIME" )
+endif(NO_HALF_SIZE_PRIME)
+
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../cmake/Modules/")
 find_package(GMP REQUIRED)
@@ -71,9 +91,25 @@ set(SOURCE_FILES
         timing.cpp
         timing.h)
 
+add_library(fhe ${SOURCE_FILES})
+target_link_libraries(fhe m gmp ntl)
+
+
+### INSTALLATION
 
 set(HEADER_FILES ${SOURCE_FILES})
-list(FILTER HEADER_FILES INCLUDE REGEX [^.]*[.h])
+list(FILTER HEADER_FILES INCLUDE REGEX ".+\\.h?h$")
+
+install(TARGETS fhe DESTINATION lib)
+install(FILES ${HEADER_FILES} DESTINATION include/fhe)
+
+add_custom_target(install_${PROJECT_NAME}
+        $(MAKE) install
+        DEPENDS fhe
+        COMMENT "Installing ${PROJECT_NAME}")
+
+### Testing
+enable_testing()
 
 set (TEST_SOURCE_FILES
         Test_bootstrapping.cpp
@@ -89,24 +125,12 @@ set (TEST_SOURCE_FILES
         Test_PolyEval.cpp
         Test_Replicate.cpp )
 
-add_library(fhe ${SOURCE_FILES})
-target_link_libraries(fhe m gmp ntl)
-
-install(TARGETS fhe DESTINATION lib)
-install(FILES ${HEADER_FILES} DESTINATION include/fhe)
-
-add_custom_target(install_${PROJECT_NAME}
-        $(MAKE) install
-        DEPENDS fhe
-        COMMENT "Installing ${PROJECT_NAME}")
-
 foreach(testsourcefile ${TEST_SOURCE_FILES})
     string( REPLACE ".cpp" "_x" testname ${testsourcefile} )
     add_executable( ${testname} ${testsourcefile} )
     target_link_libraries( ${testname} m gmp ntl fhe )
 endforeach(testsourcefile ${TEST_SOURCE_FILES})
 
-enable_testing()
 add_test(test_general_1 Test_General_x  R=1 k=10 p=2 r=2 noPrint=1)
 add_test(test_general_2 Test_General_x  R=1 k=10 p=2 d=2 noPrint=1)
 add_test(test_general_3 Test_General_x  R=2 k=10 p=7 r=2 noPrint=1)
@@ -137,9 +161,7 @@ set(tests
         test_bootstrapping_2
         )
 
+# Tests are considered passed if no "bad" words appear in the output
 set_tests_properties(${tests} PROPERTIES
-        FAIL_REGULAR_EXPRESSION "Error;ERROR;Failed;failed"
+        FAIL_REGULAR_EXPRESSION "Error;ERROR;Failed;failed;BAD;bad"
         )
-
-#add_executable(test_libfhe ${TEST_SOURCE_FILES})
-#target_link_libraries(test_libfhe m gmp ntl)
