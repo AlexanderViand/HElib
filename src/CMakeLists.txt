@@ -101,7 +101,7 @@ set(HEADER_FILES ${SOURCE_FILES})
 list(FILTER HEADER_FILES INCLUDE REGEX ".+\\.h?h$")
 
 install(TARGETS fhe DESTINATION lib)
-install(FILES ${HEADER_FILES} DESTINATION include/fhe)
+install(FILES ${HEADER_FILES} DESTINATION include/FHE)
 
 add_custom_target(install_${PROJECT_NAME}
         $(MAKE) install
