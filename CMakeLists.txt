@@ -19,6 +19,7 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 set(CMAKE_CXX_STANDARD 11)
 ## On old platform, might change to -std=c++0x
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+set(RUN_LIB fhe ntl gmp)
 
 ## To use multi-threads.
 ## Make sure the NTL is built with NTL_THREADS=on
@@ -26,10 +27,9 @@ set(CMAKE_CXX_STANDARD 11)
 if (ENABLE_THREADS)
 set(FHE_THREADS ON) 
 add_definitions(-DFHE_THREADS)
-set(RUN_LIB fhe ntl gmp pthread)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -pthread")
 else (ENABLE_THREADS)
 set(FHE_THREADS OFF) 
-set(RUN_LIB fhe ntl gmp)
 endif (ENABLE_THREADS)
 
 add_subdirectory(src)

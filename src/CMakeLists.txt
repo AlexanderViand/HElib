@@ -1,5 +1,6 @@
 file(GLOB HELIB_SRC_FILES RELATIVE "${CMAKE_SOURCE_DIR}/src" "*.cpp")
-file(GLOB TEST_FILES RELATIVE "${CMAKE_SOURCE_DIR}/src" "Test_*.cpp")
+file(GLOB HELIB_HDR_FILES RELATIVE "${CMAKE_SOURCE_DIR}/src" "*.h")
+file(GLOB TEST_FILES RELATIVE "${CMAKE_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/src" "Test_*.cpp")
 
 ## Remove test files from the source file list.
 foreach(prg ${TEST_FILES})
@@ -7,9 +8,9 @@ foreach(prg ${TEST_FILES})
 endforeach(prg)
 
 if (BUILD_SHARED)
-add_library(fhe SHARED ${HELIB_SRC_FILES})
+add_library(fhe SHARED ${HELIB_SRC_FILES} ${HELIB_HDR_FILES})
 else (BUILD_SHARED)
-add_library(fhe STATIC ${HELIB_SRC_FILES})
+add_library(fhe STATIC ${HELIB_SRC_FILES} ${HELIB_HDR_FILES})
 endif (BUILD_SHARED)
 
 if (BUILD_AES)
