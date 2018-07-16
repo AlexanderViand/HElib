@@ -12,8 +12,8 @@
 // Test_tableLookup.cpp - test the table-lookup module
 #include <iostream>
 #include <NTL/BasicThreadPool.h>
-#include "intraSlot.h"
-#include "tableLookup.h"
+#include "../intraSlot.h"
+#include "../tableLookup.h"
 
 #ifdef DEBUG_PRINTOUT
 #include "debugging.h"

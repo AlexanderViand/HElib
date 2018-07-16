@@ -15,8 +15,8 @@
  */
 #include <NTL/ZZ.h>
 NTL_CLIENT
-#include "EncryptedArray.h"
-#include "polyEval.h"
+#include "../EncryptedArray.h"
+#include "../polyEval.h"
 
 static bool noPrint = false;
 

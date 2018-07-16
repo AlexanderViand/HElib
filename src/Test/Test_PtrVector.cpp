@@ -12,9 +12,9 @@
 #include <cassert>
 #include <iostream>
 #include <NTL/tools.h>
-#include "NumbTh.h"
-#include "PtrVector.h"
-#include "PtrMatrix.h"
+#include "../NumbTh.h"
+#include "../PtrVector.h"
+#include "../PtrMatrix.h"
 
 
 // A class with no default constructor

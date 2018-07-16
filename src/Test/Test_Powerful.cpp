@@ -9,9 +9,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. See accompanying LICENSE file.
  */
-#include "hypercube.h"
-#include "powerful.h"
-#include "FHEContext.h"
+#include "../hypercube.h"
+#include "../powerful.h"
+#include "../FHEContext.h"
 
 void testSimpleConversion(const Vec<long>& mvec)
 {

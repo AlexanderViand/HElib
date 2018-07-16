@@ -19,12 +19,12 @@
 #include <NTL/BasicThreadPool.h>
 NTL_CLIENT
 
-#include "FHE.h"
-#include "timing.h"
-#include "EncryptedArray.h"
-#include "matmul.h"
-#include "replicate.h"
-#include "permutations.h"
+#include "../FHE.h"
+#include "../timing.h"
+#include "../EncryptedArray.h"
+#include "../matmul.h"
+#include "../replicate.h"
+#include "../permutations.h"
 
 // We measure low-level timing at all levels
 class LowLvlTimingData {
@@ -304,7 +304,7 @@ void timeOps(const EncryptedArray& ea, const FHEPubKey& publicKey, Ctxt& ret,
 }
 
 // Implementation of the various random matrices is found here
-#include "randomMatrices.h"
+#include "../randomMatrices.h"
 /*
  * Defined in this file are the following class templates:
  *

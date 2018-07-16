@@ -16,9 +16,9 @@
 #include <NTL/ZZX.h>
 #include <NTL/vector.h>
 
-#include "FHE.h"
-#include "timing.h"
-#include "EncryptedArray.h"
+#include "../FHE.h"
+#include "../timing.h"
+#include "../EncryptedArray.h"
 
 bool isLittleEndian()
 {

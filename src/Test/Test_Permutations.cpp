@@ -15,10 +15,10 @@
 #include <NTL/ZZ.h>
 NTL_CLIENT
 
-#include "NumbTh.h"
-#include "timing.h"
-#include "permutations.h"
-#include "EncryptedArray.h"
+#include "../NumbTh.h"
+#include "../timing.h"
+#include "../permutations.h"
+#include "../EncryptedArray.h"
 
 static bool noPrint = false;
 

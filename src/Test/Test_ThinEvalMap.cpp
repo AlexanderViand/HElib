@@ -12,9 +12,9 @@
 
 /* Test_ThinEvalMap.cpp - Testing the evalution map for thin bootstrapping
  */
-#include "FHE.h"
-#include "EncryptedArray.h"
-#include "EvalMap.h"
+#include "../FHE.h"
+#include "../EncryptedArray.h"
+#include "../EvalMap.h"
 #include <NTL/BasicThreadPool.h>
 
 

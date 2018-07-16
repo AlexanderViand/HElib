@@ -14,9 +14,9 @@ namespace NTL {} using namespace NTL;
 
 #include <NTL/BasicThreadPool.h>
 
-#include "EvalMap.h"
-#include "hypercube.h"
-#include "powerful.h"
+#include "../EvalMap.h"
+#include "../hypercube.h"
+#include "../powerful.h"
 
 static bool dry = false; // a dry-run flag
 static bool noPrint = false;

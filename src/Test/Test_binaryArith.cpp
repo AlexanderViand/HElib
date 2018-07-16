@@ -17,11 +17,11 @@
 #include <NTL/BasicThreadPool.h>
 NTL_CLIENT
 
-#include "EncryptedArray.h"
-#include "FHE.h"
+#include "../EncryptedArray.h"
+#include "../FHE.h"
 
-#include "intraSlot.h"
-#include "binaryArith.h"
+#include "../intraSlot.h"
+#include "../binaryArith.h"
 
 #ifdef DEBUG_PRINTOUT
 #include "debugging.h"

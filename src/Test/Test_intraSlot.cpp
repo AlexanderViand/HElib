@@ -10,7 +10,7 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 // testPacking.cxx - testing uppack/repack functionality
-#include "intraSlot.h"
+#include "../intraSlot.h"
 
 int main(int argc, char **argv)
 {

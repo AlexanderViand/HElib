@@ -19,9 +19,9 @@
 #include <NTL/lzz_pXFactoring.h>
 NTL_CLIENT
 
-#include "FHE.h"
-#include "replicate.h"
-#include "timing.h"
+#include "../FHE.h"
+#include "../replicate.h"
+#include "../timing.h"
 
 static bool noPrint = false;
 

@@ -13,7 +13,7 @@
  * @file matmul.h
  * @brief some matrix / linear algenra stuff
  */
-#include "matmul.h"
+#include "../matmul.h"
 #include <NTL/BasicThreadPool.h>
 
 #if (defined(__unix__) || defined(__unix) || defined(unix))
@@ -22,7 +22,7 @@
 #endif
 
 // Implementation of the various random matrices is found here
-#include "randomMatrices.h"
+#include "../randomMatrices.h"
 /*
  * Defined in this file are the following class templates:
  *

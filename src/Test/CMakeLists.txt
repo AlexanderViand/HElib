@@ -1,0 +1,8 @@
+file(GLOB TEST_FILES RELATIVE "${CMAKE_SOURCE_DIR}/src/test" "${CMAKE_SOURCE_DIR}/src/test" "Test_*.cpp")
+
+if (ENABLE_TEST)
+    foreach(TEST_FILE ${TEST_FILES})
+        add_executable(${TEST_FILE}_exe ${TEST_FILE})
+        target_link_libraries(${TEST_FILE}_exe ${RUN_LIB})
+    endforeach(TEST_FILE)
+endif(ENABLE_TEST)
