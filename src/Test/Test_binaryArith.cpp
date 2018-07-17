@@ -15,6 +15,8 @@
 #include <cmath>
 #include <algorithm>
 #include <NTL/BasicThreadPool.h>
+#include <numeric>
+
 NTL_CLIENT
 
 #include "../EncryptedArray.h"
@@ -33,7 +35,7 @@ NTL_CLIENT
 static std::vector<zzX> unpackSlotEncoding; // a global variable
 static bool verbose=false;
 
-static long mValues[][15] = { 
+static long mValues[][15] = {
 // { p, phi(m),   m,   d, m1, m2, m3,    g1,   g2,   g3, ord1,ord2,ord3, B,c}
   {  2,    48,   105, 12,   3, 35,  0,    71,    76,    0,   2,  2,   0, 25, 2},
   {  2 ,  600,  1023, 10,  11, 93,  0,   838,   584,    0,  10,  6,   0, 25, 2},
@@ -50,6 +52,8 @@ void testProduct(FHESecKey& secKey, long bitSize1, long bitSize2,
                  long outSize, bool bootstrap = false);
 void testAdd(FHESecKey& secKey, long bitSize1, long bitSize2,
              long outSize, bool bootstrap = false);
+void testInternalAdd(FHESecKey& secKey, long bitSize,
+                     long outSize, bool bootstrap = false);
 
 int main(int argc, char *argv[])
 {
@@ -74,7 +78,7 @@ int main(int argc, char *argv[])
   amap.arg("verbose", verbose, "print more information");
 
   long tests2avoid = 1;
-  amap.arg("tests2avoid", tests2avoid, "bitmap of tests to disable (1-15for4, 2-add, 4-multiply");
+  amap.arg("tests2avoid", tests2avoid, "bitmap of tests to disable (1-15for4, 2-add, 4-multiply, 8-internalAdd");
 
   amap.parse(argc, argv);
   assert(prm >= 0 && prm < 5);
@@ -119,7 +123,7 @@ int main(int argc, char *argv[])
     double add2NumsLvls = log(nBits) / log(2.0);
     L = 3 + ceil(three4twoLvls + add2NumsLvls);
   }
-  
+
   if (verbose) {
     cout <<"input bitSizes="<<bitSize<<','<<bitSize2
          <<", output size bound="<<outSize
@@ -167,6 +171,11 @@ int main(int argc, char *argv[])
   if (!(tests2avoid & 4)) {
     for (long i=0; i<nTests; i++)
       testProduct(secKey, bitSize, bitSize2, outSize, bootstrap);
+    cout << "  *** testProduct PASS ***\n";
+  }
+  if (!(tests2avoid & 8)) {
+    for (long i=0; i<nTests; i++)
+      testInternalAdd(secKey,bitSize,outSize,bootstrap);
     cout << "  *** testProduct PASS ***\n";
   }
   if (verbose) printAllTimers(cout);
@@ -380,6 +389,77 @@ void testAdd(FHESecKey& secKey, long bitSize1, long bitSize2,
     }
   }
   decryptAndPrint((cout<<" after addition: "), *minCtxt, secKey, ea,0);
+  cout << endl;
+#endif
+}
+
+
+void testInternalAdd(FHESecKey& secKey, long bitSize,
+             long outSize, bool bootstrap)
+{
+  const EncryptedArray& ea = *(secKey.getContext().ea);
+  long mask = (outSize? ((1L<<outSize)-1) : -1);
+
+  // Choose a vector of random numbers
+  std::vector<long> pa(ea.size());
+  for (long &l : pa) {
+    l = RandomBits_long(bitSize);
+  }
+
+  // Encrypt the individual bits
+  NTL::Vec<Ctxt> eSum, enca;
+
+  resize(enca, bitSize, Ctxt(secKey));
+  for (long i = 0; i < bitSize; i++) {
+    std::vector<long> t_pa = pa;
+    for (long &l : t_pa) {
+      l = (l >> i) & 1;
+    }
+    ea.skEncrypt(enca[i], secKey, t_pa);
+    if (bootstrap) {
+      // put them at a lower level
+      enca[i].modDownToLevel(5);
+    }
+  }
+
+  if (verbose) {
+    cout << "\n  bits-size "<<bitSize;
+    if (outSize>0) cout << "->"<<outSize;
+    cout <<endl;
+    CheckCtxt(enca[0], "b4 internal addition");
+  }
+
+  // Test addition
+  vector<long> slots;
+  {CtPtrs_VecCt eep(eSum);  // A wrapper around the output vector
+    internalAdd(eep,CtPtrs_VecCt(enca),&unpackSlotEncoding);
+    decryptBinaryNums(slots, eep, secKey, ea);
+  } // get rid of the wrapper
+  if (verbose) CheckCtxt(eSum[lsize(eSum)-1], "after internal addition");
+  long pSum = std::accumulate(pa.begin(), pa.end(), 0);
+
+  if (slots[0] != ((pSum)&mask)) {
+    cout << "internal add error: pSum="<<slots[0]
+         << " (should be ="<<(pSum&mask)<<")\n";
+    exit(0);
+  }
+  else if (verbose) {
+    cout << "internal add succeeded: ";
+    if (outSize) cout << "bottom "<<outSize<<" bits of sum = "
+         <<slots[0]<<endl;
+  }
+
+#ifdef DEBUG_PRINTOUT
+  const Ctxt* minCtxt = nullptr;
+  long minLvl=1000;
+  for (const Ctxt& c: eSum) {
+    long lvl = c.findBaseLevel();
+    if (lvl < minLvl) {
+      minCtxt = &c;
+      minLvl = lvl;
+    }
+  }
+  decryptAndPrint((cout<<" after internal addition: "), *minCtxt, secKey, ea,0);
   cout << endl;
 #endif
 }

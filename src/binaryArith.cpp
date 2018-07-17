@@ -433,8 +433,7 @@ void addTwoNumbers(CtPtrs &sum, const CtPtrs &a, const CtPtrs &b,
     if (lsize(a) < 1) {
         vecCopy(sum, b, sizeLimit);
         return;
-    }
-    else if (lsize(b) < 1) {
+    } else if (lsize(b) < 1) {
         vecCopy(sum, a, sizeLimit);
         return;
     }
@@ -1028,14 +1027,14 @@ void rotate1D(std::vector<Ctxt> &number, long i, long k) {
     if (ct_ptr != nullptr) {
         const EncryptedArray &ea = *(ct_ptr->getContext().ea);
         for (long j = 0; j < number.size(); ++j) {
-            ea.rotate1D(number[j],i, k);
+            ea.rotate1D(number[j], i, k);
         }
     }
 }
 
 
 // Combines a subset of the slots in a vector into a sum using two-4-three trick
-void internalTwo4Three(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncoding) {
+void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncoding) {
 
     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = number.ptr2nonNull();
@@ -1062,14 +1061,14 @@ void internalTwo4Three(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlo
     //TODO: Make this a template function so we don't have to use pointers here? Or just use something else internally?
 
     // Rotate the two small dimensions manually 30x2x2 => 30x1x1
-    std::vector<Ctxt> a, b, c, d;
-    vecCopy(a, number);  //x,0,0
-    vecCopy(b, number);  //x,0,1
-    //rotate1D(b, 2, -1);
-    vecCopy(c, number);  //x,1,0
-   // rotate1D(c, 1, -1);
-    vecCopy(d, b);       //x,1,1
-  //  rotate1D(d, 1, -1);
+//    std::vector<Ctxt> a, b, c, d;
+//    vecCopy(a, number);  //x,0,0
+//    vecCopy(b, number);  //x,0,1
+//    rotate1D(b, 2, -1);
+//    vecCopy(c, number);  //x,1,0
+//    rotate1D(c, 1, -1);
+//    vecCopy(d, b);       //x,1,1
+//    rotate1D(d, 1, -1);
 
 
     // Now we can use the three4two...except it's not exposed in the headers :(
