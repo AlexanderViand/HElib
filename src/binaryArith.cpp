@@ -1233,6 +1233,9 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
         addTwoNumbers(sum,xx,yy,0,unpackSlotEncoding);
         return;
     } else {
+        if (debug) {
+            cout << "active_slots: " << active_slots << endl;
+        }
         // There are two ways: Either have a pool of items,
         // with level and active slots, and then take them out and do 3-4-2 with that
         // Alternatively, we could use recursion => easier, so we'll do that
@@ -1255,12 +1258,18 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
         vecCopy(d, number);
         CtPtrs_vectorCt aa(a),bb(b),cc(c),dd(d);
 
-        long s = active_slots + (active_slots % 4);
+        long s = ((active_slots + 3) / 4)*4;
+        if (debug) {
+            cout << "s:" << s << endl;
+        }
         rotate(bb, -s / 4);
         rotate(cc, -s / 2);
         rotate(dd, -3 * (s / 4));
 
-        if (s % 4 != 0) {
+        if (active_slots % 4 != 0) {
+            if(debug) {
+                cout << "applying masking" << endl;
+            }
             // For the last one, we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
             std::fill_n(mask_v.begin(), s / 4, 1);
