@@ -26,8 +26,11 @@
 #include "binaryArith.h"
 
 #ifdef DEBUG_PRINTOUT
+
 #include "debugging.h"
-void decryptAndSum(ostream& s, const CtPtrMat& numbers, bool negative=false);
+
+void decryptAndSum(ostream &s, const CtPtrMat &numbers, bool negative = false);
+void printBinaryNums(const CtPtrs &eNums, const FHESecKey &sKey, const EncryptedArray &ea,bool negative = false, long slots = -1);
 bool debug = true;
 #else
 bool debug = false;
@@ -155,7 +158,9 @@ public:
     }
 
 #ifdef DEBUG_PRINTOUT
-    void printAddDAG(bool printCT=false);
+
+    void printAddDAG(bool printCT = false);
+
 #endif
 };
 
@@ -620,8 +625,8 @@ struct PtrMatrix_PtPtrVector : PtrMatrix<T> {
 void addManyNumbers(CtPtrs &sum, CtPtrMat &numbers, long sizeLimit,
                     std::vector<zzX> *unpackSlotEncoding) {
 #ifdef DEBUG_PRINTOUT
-    cout << " addManyNumbers: "<<numbers.size()
-         << " numbers with size-limit="<<sizeLimit<<endl;
+    cout << " addManyNumbers: " << numbers.size()
+         << " numbers with size-limit=" << sizeLimit << endl;
 #endif
     FHE_TIMER_START;
     const Ctxt *ct_ptr = numbers.ptr2nonNull();
@@ -717,9 +722,11 @@ static void multByNegative(CtPtrs &product, const CtPtrs &a, const CtPtrs &b,
 #ifdef DEBUG_PRINTOUT
     long pa, pb;
     vector<long> slots;
-    decryptBinaryNums(slots, a, *dbgKey, *dbgEa, false); pa=slots[0];
-    decryptBinaryNums(slots, b, *dbgKey, *dbgEa, true);  pb=slots[0];
-    decryptAndSum((cout<<" multByNegative: "<<pa<<'*'<<pb<<" = "),
+    decryptBinaryNums(slots, a, *dbgKey, *dbgEa, false);
+    pa = slots[0];
+    decryptBinaryNums(slots, b, *dbgKey, *dbgEa, true);
+    pb = slots[0];
+    decryptAndSum((cout << " multByNegative: " << pa << '*' << pb << " = "),
                   nums, true);
 #endif
     addManyNumbers(product, nums, resSize, unpackSlotEncoding);
@@ -743,7 +750,7 @@ void multTwoNumbers(CtPtrs &product, const CtPtrs &a, const CtPtrs &b,
     }
 
 #ifdef DEBUG_PRINTOUT
-    cout << " before multiplication, level="<<findMinLevel({&a, &b})
+    cout << " before multiplication, level=" << findMinLevel({&a, &b})
          << endl;
 #endif
     // Edge case, if a or b is 1 bit
@@ -805,9 +812,11 @@ void multTwoNumbers(CtPtrs &product, const CtPtrs &a, const CtPtrs &b,
 #ifdef DEBUG_PRINTOUT
     long pa, pb;
     vector<long> slots;
-    decryptBinaryNums(slots, a, *dbgKey, *dbgEa, false); pa=slots[0];
-    decryptBinaryNums(slots, b, *dbgKey, *dbgEa, false);  pb=slots[0];
-    decryptAndSum((cout<<" multTwoNumbers: "<<pa<<'*'<<pb<<" = "),
+    decryptBinaryNums(slots, a, *dbgKey, *dbgEa, false);
+    pa = slots[0];
+    decryptBinaryNums(slots, b, *dbgKey, *dbgEa, false);
+    pb = slots[0];
+    decryptAndSum((cout << " multTwoNumbers: " << pa << '*' << pb << " = "),
                   nums, false);
 #endif
     addManyNumbers(product, nums, resSize, unpackSlotEncoding);
@@ -1050,15 +1059,14 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
 
     if (debug) {
         cout << "Recursion called with slots: " << active_slots << ", a: ";
-        vector<long> slots;
-        decryptBinaryNums(slots, a, *dbgKey, *dbgEa);
-        cout << slots[0] << ", b: ";
-        decryptBinaryNums(slots, b, *dbgKey, *dbgEa);
-        cout << slots[0] << ", c:";
-        decryptBinaryNums(slots, c, *dbgKey, *dbgEa);
-        cout << slots[0] << ", d: ";
-        decryptBinaryNums(slots, d, *dbgKey, *dbgEa);
-        cout << slots[0] << endl;
+        printBinaryNums(a, *dbgKey, *dbgEa,false,active_slots);
+        cout << ", b: ";
+        printBinaryNums(b, *dbgKey, *dbgEa,false,active_slots);
+        cout << ", c:";
+        printBinaryNums(c, *dbgKey, *dbgEa,false,active_slots);
+        cout << ", d: ";
+        printBinaryNums(d, *dbgKey, *dbgEa,false,active_slots);
+        cout << endl;
     }
 
     /// Non-null pointer to one of the Ctxt representing an input bit
@@ -1072,11 +1080,10 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
 
     if (debug) {
         cout << "Result of first 3-4-2 is x1:";
-        vector<long> slots;
-        decryptBinaryNums(slots, x1, *dbgKey, *dbgEa);
-        cout << slots[0] << " and y1: ";
-        decryptBinaryNums(slots, y1, *dbgKey, *dbgEa);
-        cout << slots[0] << endl;
+        printBinaryNums( x1, *dbgKey, *dbgEa,false,active_slots);
+        cout << " and y1: ";
+        printBinaryNums( y1, *dbgKey, *dbgEa,false,active_slots);
+        cout << endl;
     }
 
     // then add x,y,d to get x2,y2
@@ -1086,11 +1093,10 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
 
     if (debug) {
         cout << "Result of second 3-4-2 is x2:";
-        vector<long> slots;
-        decryptBinaryNums(slots, x2, *dbgKey, *dbgEa);
-        cout << slots[0] << " and y2: ";
-        decryptBinaryNums(slots, y2, *dbgKey, *dbgEa);
-        cout << slots[0] << endl;
+        printBinaryNums( x2, *dbgKey, *dbgEa,false,active_slots);
+        cout << " and y2: ";
+        printBinaryNums( y2, *dbgKey, *dbgEa,false,active_slots);
+        cout << endl;
     }
 
 
@@ -1127,15 +1133,14 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
 
         if (debug) {
             cout << "Preparing for next round of recursion with x2: ";
-            vector<long> slots;
-            decryptBinaryNums(slots, x2, *dbgKey, *dbgEa);
-            cout << slots[0] << ", y2: ";
-            decryptBinaryNums(slots, y2, *dbgKey, *dbgEa);
-            cout << slots[0] << ", x2rot:";
-            decryptBinaryNums(slots, x2rot, *dbgKey, *dbgEa);
-            cout << slots[0] << ", yr2rot: ";
-            decryptBinaryNums(slots, y2rot, *dbgKey, *dbgEa);
-            cout << slots[0] << endl;
+            printBinaryNums( x2, *dbgKey, *dbgEa,false,s/2);
+            cout << ", y2: ";
+            printBinaryNums( y2, *dbgKey, *dbgEa,false,s/2);
+            cout << ", x2rot:";
+            printBinaryNums( x2rot, *dbgKey, *dbgEa,false,s/2);
+            cout << ", yr2rot: ";
+            printBinaryNums(y2rot, *dbgKey, *dbgEa,false,s/2);
+            cout << endl;
         }
 
         // => recurse
@@ -1145,11 +1150,10 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
 
         if (debug) {
             cout << "Recursion returned xx: ";
-            vector<long> slots;
-            decryptBinaryNums(slots, x2, *dbgKey, *dbgEa);
-            cout << slots[0] << ", yy: ";
-            decryptBinaryNums(slots, y2, *dbgKey, *dbgEa);
-            cout << slots[0] << endl;
+            printBinaryNums(x2, *dbgKey, *dbgEa,false,s/2);
+            cout << ", yy: ";
+            printBinaryNums(y2, *dbgKey, *dbgEa,false,s/2);
+            cout << endl;
         }
     }
 
@@ -1168,7 +1172,7 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
 
 void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncoding, long active_slots) {
 
-     /// Non-null pointer to one of the Ctxt representing an input bit
+    /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = number.ptr2nonNull();
 
     // If all inputs are null, do nothing
@@ -1182,24 +1186,23 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
 
     if (active_slots <= 1) {
         // no slots to sum up
-        vecCopy(sum,number);
+        vecCopy(sum, number);
         return;
     } else if (active_slots == 2) {
         // Do direct addition
         vector<Ctxt> a, b;
         vecCopy(a, number);
         vecCopy(b, number);
-        CtPtrs_vectorCt aa(a),bb(b);
+        CtPtrs_vectorCt aa(a), bb(b);
         rotate(bb, -1);
-        if(debug) {
+        if (debug) {
             cout << "Adding a: ";
-            vector<long> slots;
-            decryptBinaryNums(slots,aa,*dbgKey,*dbgEa);
-            cout << slots[0] << " and b: ";
-            decryptBinaryNums(slots,bb,*dbgKey,*dbgEa);
-            cout << slots[0] << " directly.";
+            printBinaryNums( aa, *dbgKey, *dbgEa,false,1);
+            cout << " and b: ";
+            printBinaryNums( bb, *dbgKey, *dbgEa,false,1);
+            cout <<  " directly.";
         }
-        addTwoNumbers(sum, aa, bb,0,unpackSlotEncoding);
+        addTwoNumbers(sum, aa, bb, 0, unpackSlotEncoding);
         return;
     } else if (active_slots == 3) {
         // Directly apply one step of three4two
@@ -1209,28 +1212,26 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
         CtPtrs_vectorCt bb(b), cc(c), xx(x), yy(y);
         rotate(bb, -1);
         rotate(cc, -2);
-        if(debug) {
+        if (debug) {
             cout << "Doing a single round of  3-4-2 with a: ";
-            vector<long> slots;
-            decryptBinaryNums(slots,number,*dbgKey,*dbgEa);
-            cout << slots[0] << ", b: ";
-            decryptBinaryNums(slots,bb,*dbgKey,*dbgEa);
-            cout << slots[0] << ", c:";
-            decryptBinaryNums(slots,cc,*dbgKey,*dbgEa);
-            cout << slots[0] << endl;
+            printBinaryNums(number, *dbgKey, *dbgEa, false, active_slots);
+            cout << ", b: ";
+            printBinaryNums(bb, *dbgKey, *dbgEa, false, active_slots);
+            cout << ", c:";
+            printBinaryNums(cc, *dbgKey, *dbgEa, false, active_slots);
+            cout << endl;
         }
-        three4Two(xx, yy, number,bb, cc, 0);
+        three4Two(xx, yy, number, bb, cc, 0);
         if (debug) {
             cout << "Result of 3-4-2 is x:";
-            vector<long> slots;
-            decryptBinaryNums(slots,xx,*dbgKey,*dbgEa);
-            cout << slots[0] << " and y: ";
-            decryptBinaryNums(slots,yy,*dbgKey,*dbgEa);
-            cout << slots[0] << endl;
+            printBinaryNums( xx, *dbgKey, *dbgEa,false,1);
+            cout <<  " and y: ";
+            printBinaryNums(yy, *dbgKey, *dbgEa,false,1);
+            cout << endl;
         }
 
         //now add them
-        addTwoNumbers(sum,xx,yy,0,unpackSlotEncoding);
+        addTwoNumbers(sum, xx, yy, 0, unpackSlotEncoding);
         return;
     } else {
         if (debug) {
@@ -1256,9 +1257,9 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
         vecCopy(b, number);
         vecCopy(c, number);
         vecCopy(d, number);
-        CtPtrs_vectorCt aa(a),bb(b),cc(c),dd(d);
+        CtPtrs_vectorCt aa(a), bb(b), cc(c), dd(d);
 
-        long s = ((active_slots + 3) / 4)*4;
+        long s = ((active_slots + 3) / 4) * 4;
         if (debug) {
             cout << "s:" << s << endl;
         }
@@ -1266,13 +1267,30 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
         rotate(cc, -s / 2);
         rotate(dd, -3 * (s / 4));
 
-        if (active_slots % 4 != 0) {
-            if(debug) {
+        if (active_slots == 5) {
+            // special case, because c also needs masking!
+            if (debug) {
+                cout << "applying special masking for 5" << endl;
+            }
+            // For the last one, we rotated some "garbage" down, too: clear it
+            vector<long> mask_v(ea.size());
+            mask_v[0] = 1;
+            ZZX mask;
+            ea.encode(mask, mask_v);
+            for (int i = 0; i < cc.size(); ++i) {
+                cc[i]->multByConstant(mask);
+            }
+            // finally, dd should be just zeros
+            for (int i = 0; i < dd.size(); ++i) {
+                dd[i]->DummyEncrypt(ZZX(0));
+            }
+        } else if (active_slots % 4 != 0) {
+            if (debug) {
                 cout << "applying masking" << endl;
             }
             // For the last one, we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
-            std::fill_n(mask_v.begin(), s / 4, 1);
+            std::fill_n(mask_v.begin(), s % 4, 1);
             ZZX mask;
             ea.encode(mask, mask_v);
             for (int i = 0; i < dd.size(); ++i) {
@@ -1281,34 +1299,32 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
         }
 
 
-        if(debug) {
+        if (debug) {
             cout << "Starting recursion with a: ";
-            vector<long> slots;
-            decryptBinaryNums(slots,aa,*dbgKey,*dbgEa);
-            cout << slots[0] << ", b: ";
-            decryptBinaryNums(slots,bb,*dbgKey,*dbgEa);
-            cout << slots[0] << ", c:";
-            decryptBinaryNums(slots,cc,*dbgKey,*dbgEa);
-            cout << slots[0] << ", d: ";
-            decryptBinaryNums(slots,dd,*dbgKey,*dbgEa);
-            cout << slots[0] << endl;
+            printBinaryNums(aa, *dbgKey, *dbgEa,false,s/4);
+            cout << ", b: ";
+            printBinaryNums(bb, *dbgKey, *dbgEa,false,s/4);
+            cout << ", c:";
+            printBinaryNums(cc, *dbgKey, *dbgEa,false,s/4);
+            cout << ", d: ";
+            printBinaryNums(dd, *dbgKey, *dbgEa,false,s/4);
+            cout << endl;
         }
 
         // Now call Three4Two which will recurse until only two numbers are left
-        internalThree4Two(aa, bb, cc, dd, s/4);
+        internalThree4Two(aa, bb, cc, dd, s / 4);
 
 
-        if(debug) {
+        if (debug) {
             cout << "Recursion concluded with a: ";
-            vector<long> slots;
-            decryptBinaryNums(slots,aa,*dbgKey,*dbgEa);
-            cout << slots[0] << ", b: ";
-            decryptBinaryNums(slots,bb,*dbgKey,*dbgEa);
-            cout << slots[0] << endl;
+            printBinaryNums(aa, *dbgKey, *dbgEa,false,s/4);
+            cout << ", b: ";
+            printBinaryNums( bb, *dbgKey, *dbgEa,false,s/4);
+            cout << endl;
         }
 
         // Final addition
-        addTwoNumbers(sum,aa,bb,0,unpackSlotEncoding);
+        addTwoNumbers(sum, aa, bb, 0, unpackSlotEncoding);
     }
 
 }
@@ -1345,70 +1361,86 @@ void decryptBinaryNums(vector<long> &pNums, const CtPtrs &eNums,
         }
 }
 
+
+
 /********************************************************************/
 #ifdef DEBUG_PRINTOUT
+
 #include <cstdio>
 
-void AddDAG::printAddDAG(bool printCT)
-{
-  cout << "aSize="<<aSize<<", bSize="<<bSize<<endl;
-  cout << "The p[i,j]'s\n============\n";  
-  for (long delta=0; delta<bSize; delta++) {
-    cout << "delta="<<delta<<endl;
-    for (long j=0; j<bSize-delta; j++) {
-      long i = j+delta;
-      DAGnode* node = findP(i,j);
-      if (node==nullptr) continue;
-      cout << node->nodeName()<<":{ lvl=";
-      if (node->level==LONG_MAX) cout << "XX";
-      else                       cout << node->level;
-      cout <<", chLeft="<<int(node->childrenLeft)
-           <<", ct="<<node->ct;
-      if (node->parent2)
-        cout << ", prnt2="<< node->parent2->nodeName();
-      if (node->parent1)
-        cout << ", prnt1="<< node->parent1->nodeName();
-      cout << " }\n";
-      if (printCT && node->ct!=nullptr)
-        decryptAndPrint(cout, *(node->ct), *dbgKey, *dbgEa, FLAG_PRINT_VEC);
+void AddDAG::printAddDAG(bool printCT) {
+    cout << "aSize=" << aSize << ", bSize=" << bSize << endl;
+    cout << "The p[i,j]'s\n============\n";
+    for (long delta = 0; delta < bSize; delta++) {
+        cout << "delta=" << delta << endl;
+        for (long j = 0; j < bSize - delta; j++) {
+            long i = j + delta;
+            DAGnode *node = findP(i, j);
+            if (node == nullptr) continue;
+            cout << node->nodeName() << ":{ lvl=";
+            if (node->level == LONG_MAX) cout << "XX";
+            else cout << node->level;
+            cout << ", chLeft=" << int(node->childrenLeft)
+                 << ", ct=" << node->ct;
+            if (node->parent2)
+                cout << ", prnt2=" << node->parent2->nodeName();
+            if (node->parent1)
+                cout << ", prnt1=" << node->parent1->nodeName();
+            cout << " }\n";
+            if (printCT && node->ct != nullptr)
+                decryptAndPrint(cout, *(node->ct), *dbgKey, *dbgEa, FLAG_PRINT_VEC);
+        }
     }
-  }
-  cout << "\nThe q[i,j]'s\n============\n";  
-  for (long delta=0; delta<bSize; delta++) {
-    cout << "delta="<<delta<<endl;
-    for (long j=0; j<std::min(aSize, bSize-delta); j++) {
-      long i = j+delta;
-      DAGnode* node = findQ(i,j);
-      if (node==nullptr) continue;
-      cout << node->nodeName() <<":{ lvl=";
-      if (node->level==LONG_MAX) cout << "XX";
-      else                       cout << node->level;
-      cout <<", chLeft="<<long(node->childrenLeft)
-           <<", ct="<<node->ct;
-      if (node->parent2)
-        cout << ", prnt2="<< node->parent2->nodeName();
-      if (node->parent1)
-        cout << ", prnt1="<< node->parent1->nodeName();
-      cout << " }\n";
-      if (printCT && node->ct!=nullptr)
-        decryptAndPrint(cout, *(node->ct), *dbgKey, *dbgEa, FLAG_PRINT_VEC);
+    cout << "\nThe q[i,j]'s\n============\n";
+    for (long delta = 0; delta < bSize; delta++) {
+        cout << "delta=" << delta << endl;
+        for (long j = 0; j < std::min(aSize, bSize - delta); j++) {
+            long i = j + delta;
+            DAGnode *node = findQ(i, j);
+            if (node == nullptr) continue;
+            cout << node->nodeName() << ":{ lvl=";
+            if (node->level == LONG_MAX) cout << "XX";
+            else cout << node->level;
+            cout << ", chLeft=" << long(node->childrenLeft)
+                 << ", ct=" << node->ct;
+            if (node->parent2)
+                cout << ", prnt2=" << node->parent2->nodeName();
+            if (node->parent1)
+                cout << ", prnt1=" << node->parent1->nodeName();
+            cout << " }\n";
+            if (printCT && node->ct != nullptr)
+                decryptAndPrint(cout, *(node->ct), *dbgKey, *dbgEa, FLAG_PRINT_VEC);
+        }
     }
-  }
-  cout << endl;
+    cout << endl;
 }
 
-void decryptAndSum(ostream& s, const CtPtrMat& numbers, bool negative)
-{
-  s << "sum(";
-  long sum=0;
-  for (long i=0; i<numbers.size(); i++) {
-    vector<long> slots;
-    const CtPtrs& num = numbers[i];
-    decryptBinaryNums(slots, num, *dbgKey, *dbgEa, negative);
-    s << slots[0] << ' ';
-    sum += slots[0];
-  }
-  s << ")="<<sum<<endl;
+void decryptAndSum(ostream &s, const CtPtrMat &numbers, bool negative) {
+    s << "sum(";
+    long sum = 0;
+    for (long i = 0; i < numbers.size(); i++) {
+        vector<long> slots;
+        const CtPtrs &num = numbers[i];
+        decryptBinaryNums(slots, num, *dbgKey, *dbgEa, negative);
+        s << slots[0] << ' ';
+        sum += slots[0];
+    }
+    s << ")=" << sum << endl;
+}
+
+void printBinaryNums(const CtPtrs &eNums, const FHESecKey &sKey, const EncryptedArray &ea,bool negative, long slots) {
+    if (slots == -1) {
+        slots = ea.size();
+    }
+
+    vector<long> pNums;
+    decryptBinaryNums(pNums,eNums,sKey,ea,negative,true);
+
+    cout << "[" << pNums[0];
+    for (int i = 1; i < slots; ++i) {
+        cout << " ," << pNums[i];
+    }
+    cout << "]";
 }
 
 #endif // ifdef DEBUG_PRINTOUT
