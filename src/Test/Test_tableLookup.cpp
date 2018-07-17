@@ -16,7 +16,7 @@
 #include "../tableLookup.h"
 
 #ifdef DEBUG_PRINTOUT
-#include "debugging.h"
+#include "../debugging.h"
 #endif
 
 static std::vector<zzX> unpackSlotEncoding; // a global variable

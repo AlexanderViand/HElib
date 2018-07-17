@@ -25,7 +25,7 @@ NTL_CLIENT
 #include "../binaryCompare.h"
 
 #ifdef DEBUG_PRINTOUT
-#include "debugging.h"
+#include "../debugging.h"
 #endif
 // define flags FLAG_PRINT_ZZX, FLAG_PRINT_POLY, FLAG_PRINT_VEC, functions
 //        decryptAndPrint(ostream, ctxt, sk, ea, flags)
