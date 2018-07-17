@@ -58,7 +58,7 @@ void testInternalAdd(FHESecKey& secKey, long bitSize,
 int main(int argc, char *argv[])
 {
   ArgMapping amap;
-  long prm=1;
+  long prm=3;
   amap.arg("prm", prm, "parameter size (0-tiny,...,7-huge)");
   long bitSize = 5;
   amap.arg("bitSize", bitSize, "bitSize of input integers (<=32)");
@@ -401,9 +401,10 @@ void testInternalAdd(FHESecKey& secKey, long bitSize,
   long mask = (outSize? ((1L<<outSize)-1) : -1);
 
   // Choose a vector of random numbers
-  long active_slots = 32;
+  long active_slots = 17;
+  assert(2*active_slots <= ea.size());
   std::vector<long> pa(ea.size(),1);
-  for(long i = 0; i < active_slots; ++i) {
+  for(long i = 0; i < 2*active_slots; ++i) {
     pa[i] = RandomBits_long(bitSize);
 #ifdef  DEBUG_PRINTOUT
     cout << "pa[" << i << "]: " << pa[i] << endl;
@@ -441,9 +442,9 @@ void testInternalAdd(FHESecKey& secKey, long bitSize,
     decryptBinaryNums(slots, eep, secKey, ea);
   } // get rid of the wrapper
   if (verbose) CheckCtxt(eSum[lsize(eSum)-1], "after internal addition");
-  long pSum = std::accumulate(pa.begin(), pa.begin()+active_slots, 0);
+  long pSum = std::accumulate(pa.begin()+active_slots, pa.begin()+2*active_slots, 0);
 
-  if (slots[0] != ((pSum)&mask)) {
+  if (slots[active_slots] != ((pSum)&mask)) {
     cout << "internal add error: pSum="<<slots[0]
          << " (should be ="<<(pSum&mask)<<")\n";
     exit(0);
@@ -451,7 +452,7 @@ void testInternalAdd(FHESecKey& secKey, long bitSize,
   else if (verbose) {
     cout << "internal add succeeded: ";
     if (outSize) cout << "bottom "<<outSize<<" bits of sum = "
-         <<slots[0]<<endl;
+         <<slots[active_slots]<<endl;
   }
 
 #ifdef DEBUG_PRINTOUT

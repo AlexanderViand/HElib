@@ -32,6 +32,7 @@
 void decryptAndSum(ostream &s, const CtPtrMat &numbers, bool negative = false);
 void printBinaryNums(const CtPtrs &eNums, const FHESecKey &sKey, const EncryptedArray &ea,bool negative = false, long slots = -1);
 bool debug = true;
+long debug_slot_max = 0;
 #else
 bool debug = false;
 #endif
@@ -1055,7 +1056,7 @@ void rotate(CtPtrs &number, long k) {
 }
 
 // Takes three integers a,b,c,d (CtPtrs) and recursively performs three-4-two among the slots
-void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_slots) {
+void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_slots, long total_active_slots) {
 
     if (debug) {
         cout << "Recursion called with slots: " << active_slots << ", a: ";
@@ -1117,9 +1118,16 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
         rotate(y2rot, -s / 2);
 
         if (active_slots % 2 != 0) {
+            cout << "not an even number of slots: using mask";
             // we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
-            std::fill_n(mask_v.begin(), s/2-1, 1);
+            for(int i = 0; i < ea.size(); ++i) {
+                if (i % total_active_slots < s/2 -1) {
+                    mask_v[i]=1;
+                }
+            }
+            cout << mask_v << endl;
+           // std::fill_n(mask_v.begin(), s/2-1, 1);
             ZZX mask;
 
             ea.encode(mask, mask_v);
@@ -1145,7 +1153,7 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
 
         // => recurse
 
-        internalThree4Two(x2, y2, x2rot, y2rot, s / 2);
+        internalThree4Two(x2, y2, x2rot, y2rot, s / 2, total_active_slots);
 
 
         if (debug) {
@@ -1184,6 +1192,9 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
     const EncryptedArray &ea = *(ct_ptr->getContext().ea);
     bool bootstrappable = ct_ptr->getPubKey().isBootstrappable();
 
+#ifdef DEBUG_PRINTOUT
+    debug_slot_max = active_slots;
+#endif
     if (active_slots <= 1) {
         // no slots to sum up
         vecCopy(sum, number);
@@ -1274,7 +1285,12 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
             }
             // For the last one, we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
-            mask_v[0] = 1;
+            for(int i = 0; i < ea.size(); ++i) {
+                if (i % active_slots == 0) {
+                    mask_v[i]=1;
+                }
+            }
+            cout << "using mask: " << mask_v << endl;
             ZZX mask;
             ea.encode(mask, mask_v);
             for (int i = 0; i < cc.size(); ++i) {
@@ -1290,7 +1306,11 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
             }
             // For the last one, we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
-            std::fill_n(mask_v.begin(), active_slots - 3*(s/4), 1);
+            for(int i = 0; i < ea.size(); ++i) {
+                if (i % active_slots < active_slots - 3*(s/4)) {
+                    mask_v[i]=1;
+                }
+            }
             cout << "using mask: " << mask_v << endl;
             ZZX mask;
             ea.encode(mask, mask_v);
@@ -1313,7 +1333,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
         }
 
         // Now call Three4Two which will recurse until only two numbers are left
-        internalThree4Two(aa, bb, cc, dd, s / 4);
+        internalThree4Two(aa, bb, cc, dd, s / 4, active_slots);
 
 
         if (debug) {
@@ -1439,6 +1459,10 @@ void printBinaryNums(const CtPtrs &eNums, const FHESecKey &sKey, const Encrypted
 
     cout << "[" << pNums[0];
     for (int i = 1; i < slots; ++i) {
+        cout << " ," << pNums[i];
+    }
+    cout << "][" << pNums[debug_slot_max];
+    for (int i = debug_slot_max+1; i < debug_slot_max + slots; ++i) {
         cout << " ," << pNums[i];
     }
     cout << "]";
