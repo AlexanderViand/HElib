@@ -1119,7 +1119,7 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
         if (active_slots % 2 != 0) {
             // we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
-            std::fill_n(mask_v.begin(), s / 2, 1);
+            std::fill_n(mask_v.begin(), s/2-1, 1);
             ZZX mask;
 
             ea.encode(mask, mask_v);
