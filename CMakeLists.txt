@@ -8,6 +8,7 @@ option(ENABLE_TEST "Build the test files" OFF)
 option(ENABLE_THREADS "To use multi-thread. Make Sure the NTL is built with NTL_THREADS=on" OFF)
 option(BUILD_SHARED "To build shared objects" OFF)
 option(BUILD_AES "To build homomorphic AES" OFF)
+option(ENABLE_DEBUG "To build with debug printout")
 
 ## Might modify the following path to NTL according to your environment
 set(NTL_HEADER /usr/local/include) 

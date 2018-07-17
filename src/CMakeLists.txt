@@ -12,6 +12,10 @@ else (BUILD_SHARED)
     add_library(fhe STATIC ${HELIB_SRC_FILES} ${HELIB_HDR_FILES})
 endif (BUILD_SHARED)
 
+if (ENABLE_DEBUG)
+    target_compile_definitions(fhe PRIVATE DEBUG_PRINTOUT=1)
+endif(ENABLE_DEBUG)
+
 if (BUILD_AES)
     include_directories("${CMAKE_SOURCE_DIR}/src")
     add_subdirectory(aes)
