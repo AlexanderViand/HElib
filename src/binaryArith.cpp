@@ -1290,7 +1290,8 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
             }
             // For the last one, we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
-            std::fill_n(mask_v.begin(), s % 4, 1);
+            std::fill_n(mask_v.begin(), active_slots - 3*(s/4), 1);
+            cout << "using mask: " << mask_v << endl;
             ZZX mask;
             ea.encode(mask, mask_v);
             for (int i = 0; i < dd.size(); ++i) {
