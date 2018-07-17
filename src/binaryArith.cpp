@@ -27,8 +27,10 @@
 
 #ifdef DEBUG_PRINTOUT
 #include "debugging.h"
-
 void decryptAndSum(ostream& s, const CtPtrMat& numbers, bool negative=false);
+bool debug = true;
+#else
+bool debug = false;
 #endif
 
 
@@ -1053,39 +1055,23 @@ void internalThree4Two(std::vector<Ctxt> &a, std::vector<Ctxt> &b, std::vector<C
     CtPtrs_vectorCt x(x_t), y(y_t);
     three4Two(x, y, CtPtrs_vectorCt(a), CtPtrs_vectorCt(b), CtPtrs_vectorCt(c), 0);
 
-    // then shift y left by one
-    // Now do addTwoNumbers
-    // A new std::vector<Ctxt*> to add a bit TODO: more efficient shifts!
-    std::vector<Ctxt *> y_shifted(y.size() + 1);
-    for (int i = 0; i < y.size(); ++i) {
-        y_shifted[i + 1] = y[i];
-    } //!!This is dirty, because of aliasing
-    //! but we don't keep yy_shifted around for long anyway
-
-    // then add x,y_shifted,d to get xx,yy
+    // then add x,y,d to get xx,yy
     std::vector<Ctxt> xx_t, yy_t;
     CtPtrs_vectorCt xx(xx_t), yy(yy_t);
-    three4Two(xx, yy, x, CtPtrs_vectorPt(y_shifted), CtPtrs_vectorCt(d), 0);
-
-    // shift yy left by one again
-    std::vector<Ctxt> yy_shifted(yy.size() + 1,Ctxt(ZeroCtxtLike,a[0]));
-    for (int i = 0; i < yy.size(); ++i) {
-        yy_shifted[i + 1] = *yy[i];
-    }
+    three4Two(xx, yy, x, y, CtPtrs_vectorCt(d), 0);
 
     // shift each of them down by half to get another four numbers
     long s = active_slots + (active_slots % 2);
-    // copy xx
     std::vector<Ctxt> xx1;
     for(int i = 0; i < xx.size(); ++i) {
         xx1.push_back(*xx[i]);
-        //TODO: More efficient vector copy between types?
     }
-
     rotate(xx1,-s/2);
-    std::vector<Ctxt> yy_shifted1;
-    vecCopy(yy_shifted1,yy_shifted);
-    rotate(yy_shifted1,-s/2);
+    std::vector<Ctxt> yy1;
+    for(int i = 0; i < xx.size(); ++i) {
+        yy1.push_back(*xx[i]);
+    }
+    rotate(yy1,-s/2);
 
     if (active_slots % 2 != 0) {
         // we rotated some "garbage" down, too: clear it
@@ -1095,7 +1081,7 @@ void internalThree4Two(std::vector<Ctxt> &a, std::vector<Ctxt> &b, std::vector<C
         ZZX mask;
 
         ea.encode(mask, mask_v);
-        for (Ctxt &ctxt : yy_shifted1) {
+        for (Ctxt &ctxt : yy1) {
             ctxt.multByConstant(mask);
         }
         for (Ctxt &ctxt : xx1) {
@@ -1104,23 +1090,26 @@ void internalThree4Two(std::vector<Ctxt> &a, std::vector<Ctxt> &b, std::vector<C
     }
 
     // => recurse
-    //Hack: copy xx to get a vector again
-    std::vector<Ctxt> xx_hack;
+    //Hack: copy xx and yy to get a vector again
+    std::vector<Ctxt> xx_hack,yy_hack;
     for(int i = 0; i < xx.size(); ++i) {
         xx_hack.push_back(*xx[i]);
     }
-    internalThree4Two(xx_hack,xx1,yy_shifted,yy_shifted1,s/2);
+    for (int i = 0; i < yy.size(); ++i) {
+        yy_hack.push_back(*yy[i]);
+    }
+    internalThree4Two(xx_hack,xx1,yy_hack,yy1,s/2);
 
 
     // Return result
-    a = xx_hack;
-    b = xx1;
+    vecCopy(a, xx_hack);
+    vecCopy(b, xx1);
 
 
 }
 
 
-void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncoding) {
+void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncoding, long active_slots) {
 
     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = number.ptr2nonNull();
@@ -1134,10 +1123,9 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
     const EncryptedArray &ea = *(ct_ptr->getContext().ea);
     bool bootstrappable = ct_ptr->getPubKey().isBootstrappable();
 
-    long active_slots = ea.size();
-
-    if (active_slots == 1) {
+    if (active_slots <= 1) {
         // no slots to sum up
+        vecCopy(sum,number);
         return;
     } else if (active_slots == 2) {
         // Do direct addition
@@ -1145,6 +1133,14 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
         vecCopy(a, number);
         vecCopy(b, number);
         rotate(b, -1);
+        if(debug) {
+            cout << "Adding a: ";
+            vector<long> slots;
+            decryptBinaryNums(slots,CtPtrs_vectorCt(a),*dbgKey,*dbgEa);
+            cout << slots[0] << " and b: ";
+            decryptBinaryNums(slots,CtPtrs_vectorCt(b),*dbgKey,*dbgEa);
+            cout << slots[0] << " directly.";
+        }
         addTwoNumbers(sum, CtPtrs_vectorCt(a), CtPtrs_vectorCt(b),0,unpackSlotEncoding);
         return;
     } else if (active_slots == 3) {
@@ -1155,30 +1151,41 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
         vecCopy(c, number);
         rotate(b, -1);
         rotate(c, -2);
+        if(debug) {
+            cout << "Doing a single round of  3-4-2 with a: ";
+            vector<long> slots;
+            decryptBinaryNums(slots,number,*dbgKey,*dbgEa);
+            cout << slots[0] << ", b: ";
+            decryptBinaryNums(slots,CtPtrs_vectorCt(b),*dbgKey,*dbgEa);
+            cout << slots[0] << ", c:";
+            decryptBinaryNums(slots,CtPtrs_vectorCt(c),*dbgKey,*dbgEa);
+            cout << slots[0] << endl;
+        }
         three4Two(xx, yy, number, CtPtrs_vectorCt(b), CtPtrs_vectorCt(c), 0);
+        if (debug) {
+            cout << "Result of 3-4-2 is x:";
+            vector<long> slots;
+            decryptBinaryNums(slots,xx,*dbgKey,*dbgEa);
+            cout << slots[0] << " and y: ";
+            decryptBinaryNums(slots,yy,*dbgKey,*dbgEa);
+            cout << slots[0] << endl;
+        }
 
-        // Now do addTwoNumbers
-        // A new std::vector<Ctxt*> to add a bit TODO: more efficient shifts!
-        std::vector<Ctxt*> yy_shifted(yy.size() + 1);
-        for (int i = 0; i < yy.size(); ++i) {
-                yy_shifted[i+1] = yy[i];
-        } //!!This is dirty, because of aliasing
-          //! but we don't keep yy_shifted around for long anyway
-
-         addTwoNumbers(sum,xx,CtPtrs_vectorPt(yy_shifted),0,unpackSlotEncoding);
+        //now add them
+        addTwoNumbers(sum,xx,yy,0,unpackSlotEncoding);
         return;
     } else {
         // There are two ways: Either have a pool of items,
         // with level and active slots, and then take them out and do 3-4-2 with that
         // Alternatively, we could use recursion => easier, so we'll do that
 
-        if (bootstrappable) {
-            // Check that we can actually do the next few steps
-            if (findMinLevel(number) < 5) { //TODO: Figure out the exact number to use here
-                assert(bootstrappable && unpackSlotEncoding != nullptr);
-                packedRecrypt(number, *unpackSlotEncoding, ea, /*belowLvl=*/10);
-            }
-        }
+//        if (bootstrappable) {
+//            // Check that we can actually do the next few steps
+//            if (findMinLevel(number) < 5) { //TODO: Figure out the exact number to use here
+//                assert(bootstrappable && unpackSlotEncoding != nullptr);
+//                packedRecrypt(number, *unpackSlotEncoding, ea, /*belowLvl=*/10);
+//            }
+//        }
 
 
         // Create 4 rotated vectors that have active_slots = ea.size()/4

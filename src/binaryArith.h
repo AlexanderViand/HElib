@@ -56,6 +56,6 @@ void packedRecrypt(const CtPtrs& a, const CtPtrs& b,
                    std::vector<zzX>* unpackSlotEncoding);
 
 //! Use rotations and 3-2 trick to
-void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncoding);
+void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncoding, long active_slots);
 
 #endif // ifndef _BINARY_ARITH_H_
