@@ -1020,98 +1020,153 @@ long fifteenOrLess4Four(const CtPtrs &out, const CtPtrs &in, long sizeLimit) {
 /********************************************************************/
 /***************** Additions to Binary Arith ************************/
 
-// Rotate all non-null elements of number
-void rotate(std::vector<Ctxt> &number, long k) {
-    if (!number.empty()) {
-        const EncryptedArray &ea = *(number[0].getContext().ea);
-        for (long j = 0; j < number.size(); ++j) {
-            ea.rotate(number[j], k);
-        }
-    }
-}
-
-//void rotate(CtPtrs &number, long k) {
-//    /// Non-null pointer to one of the Ctxt representing an input bit
-//    const Ctxt *ct_ptr = number.ptr2nonNull();
-//
-//    // If all inputs are null, do nothing
-//    if (ct_ptr != nullptr) {
-//        const EncryptedArray &ea = *(ct_ptr->getContext().ea);
+//// Rotate all non-null elements of number
+//void rotate(std::vector<Ctxt> &number, long k) {
+//    if (!number.empty()) {
+//        const EncryptedArray &ea = *(number[0].getContext().ea);
 //        for (long j = 0; j < number.size(); ++j) {
-//            ea.rotate(*number[j], k);
+//            ea.rotate(number[j], k);
 //        }
 //    }
 //}
 
-// Takes three integers a,b,c,d (CtPtrs) and recursively performs three-4-two among the slots
-void internalThree4Two(std::vector<Ctxt> &a, std::vector<Ctxt> &b, std::vector<Ctxt> &c, std::vector<Ctxt> &d, long active_slots) {
+void rotate(CtPtrs &number, long k) {
+    /// Non-null pointer to one of the Ctxt representing an input bit
+    const Ctxt *ct_ptr = number.ptr2nonNull();
 
-    if (active_slots == 1) {
-        return;
+    // If all inputs are null, do nothing
+    if (ct_ptr != nullptr) {
+        const EncryptedArray &ea = *(ct_ptr->getContext().ea);
+        for (long j = 0; j < number.size(); ++j) {
+            ea.rotate(*number[j], k);
+        }
     }
+}
+
+// Takes three integers a,b,c,d (CtPtrs) and recursively performs three-4-two among the slots
+void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_slots) {
+
+    if (debug) {
+        cout << "Recursion called with slots: " << active_slots << ", a: ";
+        vector<long> slots;
+        decryptBinaryNums(slots, a, *dbgKey, *dbgEa);
+        cout << slots[0] << ", b: ";
+        decryptBinaryNums(slots, b, *dbgKey, *dbgEa);
+        cout << slots[0] << ", c:";
+        decryptBinaryNums(slots, c, *dbgKey, *dbgEa);
+        cout << slots[0] << ", d: ";
+        decryptBinaryNums(slots, d, *dbgKey, *dbgEa);
+        cout << slots[0] << endl;
+    }
+
+    /// Non-null pointer to one of the Ctxt representing an input bit
+    const Ctxt *ct_ptr = a.ptr2nonNull();
+    const EncryptedArray &ea = *(ct_ptr->getContext().ea);
 
     // first add a,b,c to get x,y
-    std::vector<Ctxt> x_t, y_t;
-    CtPtrs_vectorCt x(x_t), y(y_t);
-    three4Two(x, y, CtPtrs_vectorCt(a), CtPtrs_vectorCt(b), CtPtrs_vectorCt(c), 0);
+    std::vector<Ctxt> x1_t, y1_t;
+    CtPtrs_vectorCt x1(x1_t), y1(y1_t);
+    three4Two(x1, y1, a, b, c, 0);
 
-    // then add x,y,d to get xx,yy
-    std::vector<Ctxt> xx_t, yy_t;
-    CtPtrs_vectorCt xx(xx_t), yy(yy_t);
-    three4Two(xx, yy, x, y, CtPtrs_vectorCt(d), 0);
-
-    // shift each of them down by half to get another four numbers
-    long s = active_slots + (active_slots % 2);
-    std::vector<Ctxt> xx1;
-    for(int i = 0; i < xx.size(); ++i) {
-        xx1.push_back(*xx[i]);
+    if (debug) {
+        cout << "Result of first 3-4-2 is x1:";
+        vector<long> slots;
+        decryptBinaryNums(slots, x1, *dbgKey, *dbgEa);
+        cout << slots[0] << " and y1: ";
+        decryptBinaryNums(slots, y1, *dbgKey, *dbgEa);
+        cout << slots[0] << endl;
     }
-    rotate(xx1,-s/2);
-    std::vector<Ctxt> yy1;
-    for(int i = 0; i < xx.size(); ++i) {
-        yy1.push_back(*xx[i]);
+
+    // then add x,y,d to get x2,y2
+    std::vector<Ctxt> x2_t, y2_t;
+    CtPtrs_vectorCt x2(x2_t), y2(y2_t);
+    three4Two(x2, y2, x1, y1, d, 0);
+
+    if (debug) {
+        cout << "Result of second 3-4-2 is x2:";
+        vector<long> slots;
+        decryptBinaryNums(slots, x2, *dbgKey, *dbgEa);
+        cout << slots[0] << " and y2: ";
+        decryptBinaryNums(slots, y2, *dbgKey, *dbgEa);
+        cout << slots[0] << endl;
     }
-    rotate(yy1,-s/2);
 
-    if (active_slots % 2 != 0) {
-        // we rotated some "garbage" down, too: clear it
-        const EncryptedArray &ea = *(a[0].getContext().ea);
-        vector<long> mask_v(ea.size());
-        std::fill_n(mask_v.begin(), s / 2, 1);
-        ZZX mask;
 
-        ea.encode(mask, mask_v);
-        for (Ctxt &ctxt : yy1) {
-            ctxt.multByConstant(mask);
+    if (active_slots > 1) {
+        // shift each of them down by half to get another four numbers
+        long s = active_slots + (active_slots % 2);
+        std::vector<Ctxt> x2rot_t(x2.size(), Ctxt(ZeroCtxtLike, *ct_ptr)), y2rot_t(y2.size(),
+                                                                                   Ctxt(ZeroCtxtLike, *ct_ptr));
+        //TODO: Write a vecCopy between CtPtrs and/or from CtPtrs to vector<Ctxt(*)>
+        for (int i = 0; i < x2.size(); ++i) {
+            x2rot_t[i] = *x2[i];
         }
-        for (Ctxt &ctxt : xx1) {
-            ctxt.multByConstant(mask);
+        for (int i = 0; i < y2.size(); ++i) {
+            y2rot_t[i] = *y2[i];
+        }
+        CtPtrs_vectorCt x2rot(x2rot_t), y2rot(y2rot_t);
+        rotate(x2rot, -s / 2);
+        rotate(y2rot, -s / 2);
+
+        if (active_slots % 2 != 0) {
+            // we rotated some "garbage" down, too: clear it
+            vector<long> mask_v(ea.size());
+            std::fill_n(mask_v.begin(), s / 2, 1);
+            ZZX mask;
+
+            ea.encode(mask, mask_v);
+            for (int i = 0; i < x2rot.size(); ++i) {
+                x2rot[i]->multByConstant(mask);
+            }
+            for (int i = 0; i < y2rot.size(); ++i) {
+                y2rot[i]->multByConstant(mask);
+            }
+        }
+
+        if (debug) {
+            cout << "Preparing for next round of recursion with x2: ";
+            vector<long> slots;
+            decryptBinaryNums(slots, x2, *dbgKey, *dbgEa);
+            cout << slots[0] << ", y2: ";
+            decryptBinaryNums(slots, y2, *dbgKey, *dbgEa);
+            cout << slots[0] << ", x2rot:";
+            decryptBinaryNums(slots, x2rot, *dbgKey, *dbgEa);
+            cout << slots[0] << ", yr2rot: ";
+            decryptBinaryNums(slots, y2rot, *dbgKey, *dbgEa);
+            cout << slots[0] << endl;
+        }
+
+        // => recurse
+
+        internalThree4Two(x2, y2, x2rot, y2rot, s / 2);
+
+
+        if (debug) {
+            cout << "Recursion returned xx: ";
+            vector<long> slots;
+            decryptBinaryNums(slots, x2, *dbgKey, *dbgEa);
+            cout << slots[0] << ", yy: ";
+            decryptBinaryNums(slots, y2, *dbgKey, *dbgEa);
+            cout << slots[0] << endl;
         }
     }
-
-    // => recurse
-    //Hack: copy xx and yy to get a vector again
-    std::vector<Ctxt> xx_hack,yy_hack;
-    for(int i = 0; i < xx.size(); ++i) {
-        xx_hack.push_back(*xx[i]);
-    }
-    for (int i = 0; i < yy.size(); ++i) {
-        yy_hack.push_back(*yy[i]);
-    }
-    internalThree4Two(xx_hack,xx1,yy_hack,yy1,s/2);
-
 
     // Return result
-    vecCopy(a, xx_hack);
-    vecCopy(b, xx1);
-
-
+    //TODO: vecCopy for this?
+    resize(a, x2.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
+    resize(b, y2.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
+    for (int i = 0; i < x2.size(); ++i) {
+        *a[i] = *x2[i];
+    }
+    for (int i = 0; i < y2.size(); ++i) {
+        *b[i] = *y2[i];
+    }
 }
 
 
 void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncoding, long active_slots) {
 
-    /// Non-null pointer to one of the Ctxt representing an input bit
+     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = number.ptr2nonNull();
 
     // If all inputs are null, do nothing
@@ -1132,36 +1187,37 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
         vector<Ctxt> a, b;
         vecCopy(a, number);
         vecCopy(b, number);
-        rotate(b, -1);
+        CtPtrs_vectorCt aa(a),bb(b);
+        rotate(bb, -1);
         if(debug) {
             cout << "Adding a: ";
             vector<long> slots;
-            decryptBinaryNums(slots,CtPtrs_vectorCt(a),*dbgKey,*dbgEa);
+            decryptBinaryNums(slots,aa,*dbgKey,*dbgEa);
             cout << slots[0] << " and b: ";
-            decryptBinaryNums(slots,CtPtrs_vectorCt(b),*dbgKey,*dbgEa);
+            decryptBinaryNums(slots,bb,*dbgKey,*dbgEa);
             cout << slots[0] << " directly.";
         }
-        addTwoNumbers(sum, CtPtrs_vectorCt(a), CtPtrs_vectorCt(b),0,unpackSlotEncoding);
+        addTwoNumbers(sum, aa, bb,0,unpackSlotEncoding);
         return;
     } else if (active_slots == 3) {
         // Directly apply one step of three4two
         vector<Ctxt> b, c, x, y;
-        CtPtrs_vectorCt xx(x), yy(y);
         vecCopy(b, number);
         vecCopy(c, number);
-        rotate(b, -1);
-        rotate(c, -2);
+        CtPtrs_vectorCt bb(b), cc(c), xx(x), yy(y);
+        rotate(bb, -1);
+        rotate(cc, -2);
         if(debug) {
             cout << "Doing a single round of  3-4-2 with a: ";
             vector<long> slots;
             decryptBinaryNums(slots,number,*dbgKey,*dbgEa);
             cout << slots[0] << ", b: ";
-            decryptBinaryNums(slots,CtPtrs_vectorCt(b),*dbgKey,*dbgEa);
+            decryptBinaryNums(slots,bb,*dbgKey,*dbgEa);
             cout << slots[0] << ", c:";
-            decryptBinaryNums(slots,CtPtrs_vectorCt(c),*dbgKey,*dbgEa);
+            decryptBinaryNums(slots,cc,*dbgKey,*dbgEa);
             cout << slots[0] << endl;
         }
-        three4Two(xx, yy, number, CtPtrs_vectorCt(b), CtPtrs_vectorCt(c), 0);
+        three4Two(xx, yy, number,bb, cc, 0);
         if (debug) {
             cout << "Result of 3-4-2 is x:";
             vector<long> slots;
@@ -1195,11 +1251,12 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
         vecCopy(b, number);
         vecCopy(c, number);
         vecCopy(d, number);
+        CtPtrs_vectorCt aa(a),bb(b),cc(c),dd(d);
 
         long s = active_slots + (active_slots % 4);
-        rotate(b, -s / 4);
-        rotate(c, -s / 2);
-        rotate(d, -3 * (s / 4));
+        rotate(bb, -s / 4);
+        rotate(cc, -s / 2);
+        rotate(dd, -3 * (s / 4));
 
         if (s % 4 != 0) {
             // For the last one, we rotated some "garbage" down, too: clear it
@@ -1207,16 +1264,40 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
             std::fill_n(mask_v.begin(), s / 4, 1);
             ZZX mask;
             ea.encode(mask, mask_v);
-            for (Ctxt &ctxt : d) {
-                ctxt.multByConstant(mask);
+            for (int i = 0; i < dd.size(); ++i) {
+                dd[i]->multByConstant(mask);
             }
         }
 
+
+        if(debug) {
+            cout << "Starting recursion with a: ";
+            vector<long> slots;
+            decryptBinaryNums(slots,aa,*dbgKey,*dbgEa);
+            cout << slots[0] << ", b: ";
+            decryptBinaryNums(slots,bb,*dbgKey,*dbgEa);
+            cout << slots[0] << ", c:";
+            decryptBinaryNums(slots,cc,*dbgKey,*dbgEa);
+            cout << slots[0] << ", d: ";
+            decryptBinaryNums(slots,dd,*dbgKey,*dbgEa);
+            cout << slots[0] << endl;
+        }
+
         // Now call Three4Two which will recurse until only two numbers are left
-        internalThree4Two(a, b, c, d, s/4);
+        internalThree4Two(aa, bb, cc, dd, s/4);
+
+
+        if(debug) {
+            cout << "Recursion concluded with a: ";
+            vector<long> slots;
+            decryptBinaryNums(slots,aa,*dbgKey,*dbgEa);
+            cout << slots[0] << ", b: ";
+            decryptBinaryNums(slots,bb,*dbgKey,*dbgEa);
+            cout << slots[0] << endl;
+        }
 
         // Final addition
-        addTwoNumbers(sum,CtPtrs_vectorCt(a),CtPtrs_vectorCt(b),0,unpackSlotEncoding);
+        addTwoNumbers(sum,aa,bb,0,unpackSlotEncoding);
     }
 
 }
