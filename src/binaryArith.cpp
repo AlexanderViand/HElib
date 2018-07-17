@@ -1038,7 +1038,9 @@ void rotate(CtPtrs &number, long k) {
     if (ct_ptr != nullptr) {
         const EncryptedArray &ea = *(ct_ptr->getContext().ea);
         for (long j = 0; j < number.size(); ++j) {
-            ea.rotate(*number[j], k);
+            if (number[j] != nullptr) {
+                ea.rotate(*number[j], k);
+            }
         }
     }
 }
@@ -1095,8 +1097,8 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
     if (active_slots > 1) {
         // shift each of them down by half to get another four numbers
         long s = active_slots + (active_slots % 2);
-        std::vector<Ctxt> x2rot_t(x2.size(), Ctxt(ZeroCtxtLike, *ct_ptr)), y2rot_t(y2.size(),
-                                                                                   Ctxt(ZeroCtxtLike, *ct_ptr));
+        std::vector<Ctxt> x2rot_t(x2.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
+        std::vector<Ctxt> y2rot_t(y2.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
         //TODO: Write a vecCopy between CtPtrs and/or from CtPtrs to vector<Ctxt(*)>
         for (int i = 0; i < x2.size(); ++i) {
             x2rot_t[i] = *x2[i];
@@ -1153,8 +1155,8 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
 
     // Return result
     //TODO: vecCopy for this?
-    resize(a, x2.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
-    resize(b, y2.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
+    a.resize(x2.size());
+    b.resize(y2.size());
     for (int i = 0; i < x2.size(); ++i) {
         *a[i] = *x2[i];
     }
