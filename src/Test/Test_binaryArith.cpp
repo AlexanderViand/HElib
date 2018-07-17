@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
   if (!(tests2avoid & 8)) {
     for (long i=0; i<nTests; i++)
       testInternalAdd(secKey,bitSize,outSize,bootstrap);
-    cout << "  *** testProduct PASS ***\n";
+    cout << "  *** testInternalAdd PASS ***\n";
   }
   if (verbose) printAllTimers(cout);
   return 0;
@@ -401,9 +401,14 @@ void testInternalAdd(FHESecKey& secKey, long bitSize,
   long mask = (outSize? ((1L<<outSize)-1) : -1);
 
   // Choose a vector of random numbers
-  std::vector<long> pa(ea.size());
-  for (long &l : pa) {
-    l = RandomBits_long(bitSize);
+  long active_slots = 32;
+  std::vector<long> pa(ea.size(),1);
+  for(long i = 0; i < active_slots; ++i) {
+    pa[i] = RandomBits_long(bitSize);
+#ifdef  DEBUG_PRINTOUT
+    cout << "pa[" << i << "]: " << pa[i] << endl;
+#endif
+
   }
 
   // Encrypt the individual bits
@@ -429,14 +434,14 @@ void testInternalAdd(FHESecKey& secKey, long bitSize,
     CheckCtxt(enca[0], "b4 internal addition");
   }
 
-  // Test addition
+  // Test internal addition
   vector<long> slots;
   {CtPtrs_VecCt eep(eSum);  // A wrapper around the output vector
-    internalAdd(eep,CtPtrs_VecCt(enca),&unpackSlotEncoding);
+    internalAdd(eep, CtPtrs_VecCt(enca), &unpackSlotEncoding, active_slots);
     decryptBinaryNums(slots, eep, secKey, ea);
   } // get rid of the wrapper
   if (verbose) CheckCtxt(eSum[lsize(eSum)-1], "after internal addition");
-  long pSum = std::accumulate(pa.begin(), pa.end(), 0);
+  long pSum = std::accumulate(pa.begin(), pa.begin()+active_slots, 0);
 
   if (slots[0] != ((pSum)&mask)) {
     cout << "internal add error: pSum="<<slots[0]
