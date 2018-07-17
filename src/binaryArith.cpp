@@ -1018,22 +1018,108 @@ long fifteenOrLess4Four(const CtPtrs &out, const CtPtrs &in, long sizeLimit) {
 /********************************************************************/
 /***************** Additions to Binary Arith ************************/
 
-/// Rotate all non-null elements of number
-void rotate1D(std::vector<Ctxt> &number, long i, long k) {
-    /// Non-null pointer to one of the Ctxt representing an input bit
-    const Ctxt *ct_ptr = CtPtrs_vectorCt(number).ptr2nonNull();
-
-    // If all inputs are null, do nothing
-    if (ct_ptr != nullptr) {
-        const EncryptedArray &ea = *(ct_ptr->getContext().ea);
+// Rotate all non-null elements of number
+void rotate(std::vector<Ctxt> &number, long k) {
+    if (!number.empty()) {
+        const EncryptedArray &ea = *(number[0].getContext().ea);
         for (long j = 0; j < number.size(); ++j) {
-            ea.rotate1D(number[j], i, k);
+            ea.rotate(number[j], k);
         }
     }
 }
 
+//void rotate(CtPtrs &number, long k) {
+//    /// Non-null pointer to one of the Ctxt representing an input bit
+//    const Ctxt *ct_ptr = number.ptr2nonNull();
+//
+//    // If all inputs are null, do nothing
+//    if (ct_ptr != nullptr) {
+//        const EncryptedArray &ea = *(ct_ptr->getContext().ea);
+//        for (long j = 0; j < number.size(); ++j) {
+//            ea.rotate(*number[j], k);
+//        }
+//    }
+//}
 
-// Combines a subset of the slots in a vector into a sum using two-4-three trick
+// Takes three integers a,b,c,d (CtPtrs) and recursively performs three-4-two among the slots
+void internalThree4Two(std::vector<Ctxt> &a, std::vector<Ctxt> &b, std::vector<Ctxt> &c, std::vector<Ctxt> &d, long active_slots) {
+
+    if (active_slots == 1) {
+        return;
+    }
+
+    // first add a,b,c to get x,y
+    std::vector<Ctxt> x_t, y_t;
+    CtPtrs_vectorCt x(x_t), y(y_t);
+    three4Two(x, y, CtPtrs_vectorCt(a), CtPtrs_vectorCt(b), CtPtrs_vectorCt(c), 0);
+
+    // then shift y left by one
+    // Now do addTwoNumbers
+    // A new std::vector<Ctxt*> to add a bit TODO: more efficient shifts!
+    std::vector<Ctxt *> y_shifted(y.size() + 1);
+    for (int i = 0; i < y.size(); ++i) {
+        y_shifted[i + 1] = y[i];
+    } //!!This is dirty, because of aliasing
+    //! but we don't keep yy_shifted around for long anyway
+
+    // then add x,y_shifted,d to get xx,yy
+    std::vector<Ctxt> xx_t, yy_t;
+    CtPtrs_vectorCt xx(xx_t), yy(yy_t);
+    three4Two(xx, yy, x, CtPtrs_vectorPt(y_shifted), CtPtrs_vectorCt(d), 0);
+
+    // shift yy left by one again
+    std::vector<Ctxt> yy_shifted(yy.size() + 1,Ctxt(ZeroCtxtLike,a[0]));
+    for (int i = 0; i < yy.size(); ++i) {
+        yy_shifted[i + 1] = *yy[i];
+    }
+
+    // shift each of them down by half to get another four numbers
+    long s = active_slots + (active_slots % 2);
+    // copy xx
+    std::vector<Ctxt> xx1;
+    for(int i = 0; i < xx.size(); ++i) {
+        xx1.push_back(*xx[i]);
+        //TODO: More efficient vector copy between types?
+    }
+
+    rotate(xx1,-s/2);
+    std::vector<Ctxt> yy_shifted1;
+    vecCopy(yy_shifted1,yy_shifted);
+    rotate(yy_shifted1,-s/2);
+
+    if (active_slots % 2 != 0) {
+        // we rotated some "garbage" down, too: clear it
+        const EncryptedArray &ea = *(a[0].getContext().ea);
+        vector<long> mask_v(ea.size());
+        std::fill_n(mask_v.begin(), s / 2, 1);
+        ZZX mask;
+
+        ea.encode(mask, mask_v);
+        for (Ctxt &ctxt : yy_shifted1) {
+            ctxt.multByConstant(mask);
+        }
+        for (Ctxt &ctxt : xx1) {
+            ctxt.multByConstant(mask);
+        }
+    }
+
+    // => recurse
+    //Hack: copy xx to get a vector again
+    std::vector<Ctxt> xx_hack;
+    for(int i = 0; i < xx.size(); ++i) {
+        xx_hack.push_back(*xx[i]);
+    }
+    internalThree4Two(xx_hack,xx1,yy_shifted,yy_shifted1,s/2);
+
+
+    // Return result
+    a = xx_hack;
+    b = xx1;
+
+
+}
+
+
 void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncoding) {
 
     /// Non-null pointer to one of the Ctxt representing an input bit
@@ -1048,35 +1134,83 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncod
     const EncryptedArray &ea = *(ct_ptr->getContext().ea);
     bool bootstrappable = ct_ptr->getPubKey().isBootstrappable();
 
-    if (bootstrappable) {
-        // Check that we can actually do the next few steps
-        if (findMinLevel(number) < 5) { //TODO: Figure out the exact number to use here
-            assert(bootstrappable && unpackSlotEncoding != nullptr);
-            packedRecrypt(number, *unpackSlotEncoding, ea, /*belowLvl=*/10);
+    long active_slots = ea.size();
+
+    if (active_slots == 1) {
+        // no slots to sum up
+        return;
+    } else if (active_slots == 2) {
+        // Do direct addition
+        vector<Ctxt> a, b;
+        vecCopy(a, number);
+        vecCopy(b, number);
+        rotate(b, -1);
+        addTwoNumbers(sum, CtPtrs_vectorCt(a), CtPtrs_vectorCt(b),0,unpackSlotEncoding);
+        return;
+    } else if (active_slots == 3) {
+        // Directly apply one step of three4two
+        vector<Ctxt> b, c, x, y;
+        CtPtrs_vectorCt xx(x), yy(y);
+        vecCopy(b, number);
+        vecCopy(c, number);
+        rotate(b, -1);
+        rotate(c, -2);
+        three4Two(xx, yy, number, CtPtrs_vectorCt(b), CtPtrs_vectorCt(c), 0);
+
+        // Now do addTwoNumbers
+        // A new std::vector<Ctxt*> to add a bit TODO: more efficient shifts!
+        std::vector<Ctxt*> yy_shifted(yy.size() + 1);
+        for (int i = 0; i < yy.size(); ++i) {
+                yy_shifted[i+1] = yy[i];
+        } //!!This is dirty, because of aliasing
+          //! but we don't keep yy_shifted around for long anyway
+
+         addTwoNumbers(sum,xx,CtPtrs_vectorPt(yy_shifted),0,unpackSlotEncoding);
+        return;
+    } else {
+        // There are two ways: Either have a pool of items,
+        // with level and active slots, and then take them out and do 3-4-2 with that
+        // Alternatively, we could use recursion => easier, so we'll do that
+
+        if (bootstrappable) {
+            // Check that we can actually do the next few steps
+            if (findMinLevel(number) < 5) { //TODO: Figure out the exact number to use here
+                assert(bootstrappable && unpackSlotEncoding != nullptr);
+                packedRecrypt(number, *unpackSlotEncoding, ea, /*belowLvl=*/10);
+            }
         }
+
+
+        // Create 4 rotated vectors that have active_slots = ea.size()/4
+        std::vector<Ctxt> a, b, c, d;
+        // Copy, in case inputs are aliasing each other
+        vecCopy(a, number);
+        vecCopy(b, number);
+        vecCopy(c, number);
+        vecCopy(d, number);
+
+        long s = active_slots + (active_slots % 4);
+        rotate(b, -s / 4);
+        rotate(c, -s / 2);
+        rotate(d, -3 * (s / 4));
+
+        if (s % 4 != 0) {
+            // For the last one, we rotated some "garbage" down, too: clear it
+            vector<long> mask_v(ea.size());
+            std::fill_n(mask_v.begin(), s / 4, 1);
+            ZZX mask;
+            ea.encode(mask, mask_v);
+            for (Ctxt &ctxt : d) {
+                ctxt.multByConstant(mask);
+            }
+        }
+
+        // Now call Three4Two which will recurse until only two numbers are left
+        internalThree4Two(a, b, c, d, s/4);
+
+        // Final addition
+        addTwoNumbers(sum,CtPtrs_vectorCt(a),CtPtrs_vectorCt(b),0,unpackSlotEncoding);
     }
-
-
-
-    //TODO: Make this a template function so we don't have to use pointers here? Or just use something else internally?
-
-    // Rotate the two small dimensions manually 30x2x2 => 30x1x1
-//    std::vector<Ctxt> a, b, c, d;
-//    vecCopy(a, number);  //x,0,0
-//    vecCopy(b, number);  //x,0,1
-//    rotate1D(b, 2, -1);
-//    vecCopy(c, number);  //x,1,0
-//    rotate1D(c, 1, -1);
-//    vecCopy(d, b);       //x,1,1
-//    rotate1D(d, 1, -1);
-
-
-    // Now we can use the three4two...except it's not exposed in the headers :(
-    //three4two()
-
-
-    //Now we only ever work on dimension zero
-    //internalThree4Two_helper(*a, *b, *c, *d, 30);
 
 }
 
