@@ -24,6 +24,7 @@
 
 #include <NTL/BasicThreadPool.h>
 #include "binaryArith.h"
+#include "binaryCompare.h"
 
 #ifdef DEBUG_PRINTOUT
 
@@ -1350,6 +1351,111 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
 
 }
 
+void internalMinHelper(CtPtrs &values, CtPtrs &indices, long interval, long sets, vector<zzX> *unpackSlotEncoding) {
+
+
+    /// Non-null pointer to one of the Ctxt representing an input bit
+    const Ctxt *ct_ptr = values.ptr2nonNull();
+
+    // If all inputs are null, do nothing
+    if (ct_ptr == nullptr || sets == 1) {
+        return;
+    }
+
+    const EncryptedArray &ea = *(ct_ptr->getContext().ea);
+
+
+    // fairly simple setup: Rotate down by half
+    // if it wasn't an even number, zero out "dirty" slots
+    // then do a compare, keep the minimum, calculate new indices as index_a*mu + index_b*ni
+    // then recurse!
+
+    // Make copies that we can shift down
+    std::vector<Ctxt> values_copy(values.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
+    std::vector<Ctxt> indices_copy(indices.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
+    for (int i = 0; i < values.size(); ++i) {
+        if (values[i] != nullptr)
+            values_copy[i] = *values[i];
+    }
+    for (int i = 0; i < indices.size(); ++i) {
+        if (indices[i] != nullptr)
+            indices_copy[i] = *indices[i];
+    }
+    CtPtrs_vectorCt values_copy_ctptrs(values_copy), indices_copy_ctptrs(indices_copy);
+
+    // Get shift amount
+    long k = -(sets / 2) * interval;
+    rotate(values_copy_ctptrs, k);
+    rotate(indices_copy_ctptrs, k);
+    if ( sets % 2 != 0) {
+        // we need to set all slots above sets/2 * interval to zero?
+        vector<long> mask_v(ea.size(),1);
+        mask_v[((sets/2)+1)*interval] = 0;
+        ZZX mask;
+        ea.encode(mask,mask_v);
+        for(int i = 0; i < indices_copy_ctptrs.size(); ++i) {
+            if (indices_copy_ctptrs[i] != nullptr) {
+                indices_copy_ctptrs[i]->multByConstant(mask);
+            }
+        }
+    }
+
+    // Compare the values to get which one was smaller
+    std::vector<Ctxt> max, min;
+    CtPtrs_vectorCt mmax(max), mmin(min);
+    Ctxt mu(ZeroCtxtLike, *ct_ptr), ni(ZeroCtxtLike, *ct_ptr);
+    compareTwoNumbers(mmax, mmin, mu, ni, values, values_copy_ctptrs, unpackSlotEncoding);
+
+    // Now we need to update the indices
+    // indice *ni (a was smaller) + indices_copy * (1+n) (b was smaller or equal)
+    // Not-ni
+    vector<long> ones(ea.size(), 1);
+    ZZX ones_zzx;
+    ea.encode(ones_zzx, ones);
+    Ctxt not_ni = ni;
+    not_ni.addConstant(ones_zzx);
+    // There really should be no difference in size and nullness of entries for those two
+    for (int i = 0; i < indices.size(); ++i) {
+        if (indices[i] != nullptr) {
+            indices[i]->multiplyBy(ni);
+            indices_copy_ctptrs[i]->multiplyBy(not_ni);
+            *(indices[i]) += *(indices_copy_ctptrs[i]);
+        }
+    }
+
+    // now we can recurse!
+    internalMinHelper(mmin, indices, interval, sets / 2, unpackSlotEncoding);
+
+    // Done, let's return the value we got from recursion
+    //TODO: vecCopy for this?
+    values.resize(mmin.size()); //should do nothing, but let's be safe
+    for (int i = 0; i < mmin.size(); ++i) {
+        *values[i] = *mmin[i];
+    }
+
+
+}
+
+
+
+void internalMin(CtPtrs &values, CtPtrs &indices, long interval, vector<zzX> *unpackSlotEncoding) {
+
+    /// Non-null pointer to one of the Ctxt representing an input bit
+    const Ctxt *ct_ptr = values.ptr2nonNull();
+
+    // If all inputs are null, do nothing
+    if (ct_ptr == nullptr) {
+        return;
+    }
+
+    const EncryptedArray &ea = *(ct_ptr->getContext().ea);
+    long sets = ea.size() / interval;
+    internalMinHelper(values,indices,interval,sets,unpackSlotEncoding);
+
+
+
+
+}
 
 /********************************************************************/
 /***************** test/debugging functions *************************/

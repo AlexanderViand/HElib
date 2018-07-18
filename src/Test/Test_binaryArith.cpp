@@ -54,6 +54,7 @@ void testAdd(FHESecKey& secKey, long bitSize1, long bitSize2,
              long outSize, bool bootstrap = false);
 void testInternalAdd(FHESecKey& secKey, long bitSize,
                      long outSize, bool bootstrap = false);
+void testInternalMin(FHESecKey &secKey, long bitSize, bool bootstrap);
 
 int main(int argc, char *argv[])
 {
@@ -78,7 +79,7 @@ int main(int argc, char *argv[])
   amap.arg("verbose", verbose, "print more information");
 
   long tests2avoid = 1;
-  amap.arg("tests2avoid", tests2avoid, "bitmap of tests to disable (1-15for4, 2-add, 4-multiply, 8-internalAdd");
+  amap.arg("tests2avoid", tests2avoid, "bitmap of tests to disable (1-15for4, 2-add, 4-multiply, 8-internalAdd, 16-internalMin");
 
   amap.parse(argc, argv);
   assert(prm >= 0 && prm < 5);
@@ -177,6 +178,11 @@ int main(int argc, char *argv[])
     for (long i=0; i<nTests; i++)
       testInternalAdd(secKey,bitSize,outSize,bootstrap);
     cout << "  *** testInternalAdd PASS ***\n";
+  }
+  if (!(tests2avoid & 16)) {
+    for (long i=0; i<nTests; i++)
+      testInternalMin(secKey, bitSize, bootstrap);
+    cout << "  *** testInternalMin PASS ***\n";
   }
   if (verbose) printAllTimers(cout);
   return 0;
@@ -467,5 +473,128 @@ void testInternalAdd(FHESecKey& secKey, long bitSize,
   }
   decryptAndPrint((cout<<" after internal addition: "), *minCtxt, secKey, ea,0);
   cout << endl;
+#endif
+}
+
+void testInternalMin(FHESecKey &secKey, long bitSize, bool bootstrap) {
+    const EncryptedArray &ea = *(secKey.getContext().ea);
+
+    // Choose a vector of random numbers
+    long interval = 15; // 1 => all slots, 2 => every second, 3 => every third, etc
+    std::vector<long> pValues(ea.size(), 1);
+    for (long i = 0; i < ea.size(); ++i) {
+        if (i % interval == 0) {
+            pValues[i] = RandomBits_long(bitSize);
+#ifdef  DEBUG_PRINTOUT
+            cout << "pValues[" << i << "]: " << pValues[i] << endl;
+#endif
+        }
+    }
+
+    // Encrypt the individual bits
+    NTL::Vec<Ctxt> eValues, eIndices;
+
+    resize(eValues, bitSize, Ctxt(secKey));
+    for (long i = 0; i < bitSize; i++) {
+        std::vector<long> t_pa = pValues;
+        for (long &l : t_pa) {
+            l = (l >> i) & 1;
+        }
+        ea.skEncrypt(eValues[i], secKey, t_pa);
+        if (bootstrap) {
+          // put them at a lower level
+          eValues[i].modDownToLevel(5);
+        }
+    }
+
+    if (verbose) {
+        cout << "\n  bits-size "<<bitSize <<endl;
+        CheckCtxt(eValues[0], "b4 internal addition");
+    }
+
+    // For the indices, find out how many bits we need:
+    long bits = _ntl_g2logs(ea.size()/interval + 1);
+    // Generate the fitting index at each position
+    vector<long> pIndices(ea.size(),1); //using 1 instead of 0 to make errors easier to spot
+    int index = 0;
+    for(int i = 0; i < ea.size(); ++i) {
+      if (i % interval == 0) {
+        pIndices[i] = index;
+        ++index;
+      }
+    }
+
+    // Encrypt the indices
+    resize(eIndices,bits,Ctxt(secKey));
+    for(long i =0; i < bits; i++) {
+      std::vector<long> t = pIndices;
+      for (long &l : t) {
+        l = (l >> i) & 1;
+      }
+      ea.skEncrypt(eIndices[i], secKey, t);
+      if (bootstrap) {
+        // put them at a lower level
+        eIndices[i].modDownToLevel(5);
+      }
+    }
+
+    // Test internal sort
+    vector<long> v_slots;
+    vector<long> i_slots;
+    { // Wrappers
+      CtPtrs_VecCt eev(eValues);
+      CtPtrs_VecCt eei(eIndices);
+      internalMin(eev, eei, interval, &unpackSlotEncoding);
+      decryptBinaryNums(v_slots, eev, secKey, ea);
+      decryptBinaryNums(i_slots, eei, secKey, ea);
+    }
+    if (verbose) CheckCtxt(eValues[lsize(eValues)-1], "after internal addition");
+
+    // All the values we care about should be at i % interval == 0
+    // Grab just the values into a new vector to sort
+    // Sorting rather than min because this was originally intended for sort, not min
+    vector<std::pair<long,long>> sorted;
+    for(int i = 0; i < ea.size(); ++i) {
+      if(i % interval == 0) {
+        sorted.emplace_back(std::make_pair(pValues[i],pIndices[i]));
+      }
+    }
+    sort(sorted.begin(),sorted.end());
+
+//#ifdef  DEBUG_PRINTOUT
+//    cout << "sorted input: [";
+//    for(auto &p : sorted) {
+//      cout << "(" << p.first << "," << p.second << "), ";
+//    }
+//    cout << "]" << endl;
+//#endif
+
+    // Now go and compare them:
+
+    if (v_slots[0] != (sorted[0].first)) {
+        cout << "internal min error: min="<< v_slots[0]
+             << " index=" << i_slots[0]
+             << " (should be min="<<(sorted[0].first)
+             << " index= " << (sorted[0].second)
+             <<")\n";
+        exit(0);
+    }
+
+    else if (verbose) {
+        cout << "internal min succeeded";
+    }
+
+#ifdef DEBUG_PRINTOUT
+    const Ctxt* minCtxt = nullptr;
+    long minLvl=1000;
+    for (const Ctxt& c: eValues) {
+        long lvl = c.findBaseLevel();
+        if (lvl < minLvl) {
+            minCtxt = &c;
+            minLvl = lvl;
+        }
+    }
+    decryptAndPrint((cout<<" after internal min: "), *minCtxt, secKey, ea,0);
+    cout << endl;
 #endif
 }

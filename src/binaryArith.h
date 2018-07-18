@@ -59,4 +59,7 @@ void packedRecrypt(const CtPtrs& a, const CtPtrs& b,
 //! Adds slots [0,active_slots), [active_slots,2*active_slots), etc
 void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zzX> *unpackSlotEncoding = nullptr);
 
+//! Minimum. Takes two inputs: One a list of values, the other a list of indices (or other associated data)
+//! Will return the minimum of values in slot 0 of values, and the corresponding element of indices there, also slot 0
+void internalMin(CtPtrs &values, CtPtrs &indices, long interval, vector<zzX> *unpackSlotEncoding = nullptr);
 #endif // ifndef _BINARY_ARITH_H_
