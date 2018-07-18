@@ -55,7 +55,8 @@ void decryptBinaryNums(vector<long>& pNums, const CtPtrs& eNums,
 void packedRecrypt(const CtPtrs& a, const CtPtrs& b,
                    std::vector<zzX>* unpackSlotEncoding);
 
-//! Use rotations and 3-2 trick to
-void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncoding, long active_slots);
+//! Use rotations and 3-2 trick to add numbers in different slots.
+//! Adds slots [0,active_slots), [active_slots,2*active_slots), etc
+void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zzX> *unpackSlotEncoding = nullptr);
 
 #endif // ifndef _BINARY_ARITH_H_

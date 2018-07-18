@@ -1178,7 +1178,7 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
 }
 
 
-void internalAdd(CtPtrs &sum, const CtPtrs &number, vector<zzX> *unpackSlotEncoding, long active_slots) {
+void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zzX> *unpackSlotEncoding) {
 
     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = number.ptr2nonNull();
