@@ -32,10 +32,7 @@
 
 void decryptAndSum(ostream &s, const CtPtrMat &numbers, bool negative = false);
 void printBinaryNums(const CtPtrs &eNums, const FHESecKey &sKey, const EncryptedArray &ea,bool negative = false, long slots = -1);
-bool debug = true;
 long debug_slot_max = 0;
-#else
-bool debug = false;
 #endif
 
 
@@ -1059,7 +1056,7 @@ void rotate(CtPtrs &number, long k) {
 // Takes three integers a,b,c,d (CtPtrs) and recursively performs three-4-two among the slots
 void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_slots, long total_active_slots) {
 
-    if (debug) {
+#ifdef DEBUG_PRINTOUT
         cout << "Recursion called with slots: " << active_slots << ", a: ";
         printBinaryNums(a, *dbgKey, *dbgEa,false,active_slots);
         cout << ", b: ";
@@ -1069,7 +1066,7 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
         cout << ", d: ";
         printBinaryNums(d, *dbgKey, *dbgEa,false,active_slots);
         cout << endl;
-    }
+#endif
 
     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = a.ptr2nonNull();
@@ -1080,26 +1077,26 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
     CtPtrs_vectorCt x1(x1_t), y1(y1_t);
     three4Two(x1, y1, a, b, c, 0);
 
-    if (debug) {
+#ifdef DEBUG_PRINTOUT
         cout << "Result of first 3-4-2 is x1:";
         printBinaryNums( x1, *dbgKey, *dbgEa,false,active_slots);
         cout << " and y1: ";
         printBinaryNums( y1, *dbgKey, *dbgEa,false,active_slots);
         cout << endl;
-    }
+#endif
 
     // then add x,y,d to get x2,y2
     std::vector<Ctxt> x2_t, y2_t;
     CtPtrs_vectorCt x2(x2_t), y2(y2_t);
     three4Two(x2, y2, x1, y1, d, 0);
 
-    if (debug) {
+#ifdef DEBUG_PRINTOUT
         cout << "Result of second 3-4-2 is x2:";
         printBinaryNums( x2, *dbgKey, *dbgEa,false,active_slots);
         cout << " and y2: ";
         printBinaryNums( y2, *dbgKey, *dbgEa,false,active_slots);
         cout << endl;
-    }
+#endif
 
 
     if (active_slots > 1) {
@@ -1140,7 +1137,7 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
             }
         }
 
-        if (debug) {
+#ifdef DEBUG_PRINTOUT
             cout << "Preparing for next round of recursion with x2: ";
             printBinaryNums( x2, *dbgKey, *dbgEa,false,s/2);
             cout << ", y2: ";
@@ -1150,20 +1147,20 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
             cout << ", yr2rot: ";
             printBinaryNums(y2rot, *dbgKey, *dbgEa,false,s/2);
             cout << endl;
-        }
+#endif
 
         // => recurse
 
         internalThree4Two(x2, y2, x2rot, y2rot, s / 2, total_active_slots);
 
 
-        if (debug) {
+#ifdef DEBUG_PRINTOUT
             cout << "Recursion returned xx: ";
             printBinaryNums(x2, *dbgKey, *dbgEa,false,s/2);
             cout << ", yy: ";
             printBinaryNums(y2, *dbgKey, *dbgEa,false,s/2);
             cout << endl;
-        }
+#endif
     }
 
     // Return result
@@ -1207,13 +1204,13 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
         vecCopy(b, number);
         CtPtrs_vectorCt aa(a), bb(b);
         rotate(bb, -1);
-        if (debug) {
+#ifdef DEBUG_PRINTOUT
             cout << "Adding a: ";
             printBinaryNums( aa, *dbgKey, *dbgEa,false,1);
             cout << " and b: ";
             printBinaryNums( bb, *dbgKey, *dbgEa,false,1);
             cout <<  " directly.";
-        }
+#endif
         addTwoNumbers(sum, aa, bb, 0, unpackSlotEncoding);
         return;
     } else if (active_slots == 3) {
@@ -1224,7 +1221,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
         CtPtrs_vectorCt bb(b), cc(c), xx(x), yy(y);
         rotate(bb, -1);
         rotate(cc, -2);
-        if (debug) {
+#ifdef DEBUG_PRINTOUT
             cout << "Doing a single round of  3-4-2 with a: ";
             printBinaryNums(number, *dbgKey, *dbgEa, false, active_slots);
             cout << ", b: ";
@@ -1232,23 +1229,23 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
             cout << ", c:";
             printBinaryNums(cc, *dbgKey, *dbgEa, false, active_slots);
             cout << endl;
-        }
+#endif
         three4Two(xx, yy, number, bb, cc, 0);
-        if (debug) {
+#ifdef DEBUG_PRINTOUT
             cout << "Result of 3-4-2 is x:";
             printBinaryNums( xx, *dbgKey, *dbgEa,false,1);
             cout <<  " and y: ";
             printBinaryNums(yy, *dbgKey, *dbgEa,false,1);
             cout << endl;
-        }
+#endif
 
         //now add them
         addTwoNumbers(sum, xx, yy, 0, unpackSlotEncoding);
         return;
     } else {
-        if (debug) {
+#ifdef DEBUG_PRINTOUT
             cout << "active_slots: " << active_slots << endl;
-        }
+#endif
         // There are two ways: Either have a pool of items,
         // with level and active slots, and then take them out and do 3-4-2 with that
         // Alternatively, we could use recursion => easier, so we'll do that
@@ -1272,18 +1269,18 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
         CtPtrs_vectorCt aa(a), bb(b), cc(c), dd(d);
 
         long s = ((active_slots + 3) / 4) * 4;
-        if (debug) {
+#ifdef DEBUG_PRINTOUT
             cout << "s:" << s << endl;
-        }
+#endif
         rotate(bb, -s / 4);
         rotate(cc, -s / 2);
         rotate(dd, -3 * (s / 4));
 
         if (active_slots == 5) {
             // special case, because c also needs masking!
-            if (debug) {
+#ifdef DEBUG_PRINTOUT
                 cout << "applying special masking for 5" << endl;
-            }
+#endif
             // For the last one, we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
             for(int i = 0; i < ea.size(); ++i) {
@@ -1302,9 +1299,9 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
                 dd[i]->DummyEncrypt(ZZX(0));
             }
         } else if (active_slots % 4 != 0) {
-            if (debug) {
+#ifdef DEBUG_PRINTOUT
                 cout << "applying masking" << endl;
-            }
+#endif
             // For the last one, we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
             for(int i = 0; i < ea.size(); ++i) {
@@ -1321,7 +1318,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
         }
 
 
-        if (debug) {
+#ifdef DEBUG_PRINTOUT
             cout << "Starting recursion with a: ";
             printBinaryNums(aa, *dbgKey, *dbgEa,false,s/4);
             cout << ", b: ";
@@ -1331,19 +1328,19 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
             cout << ", d: ";
             printBinaryNums(dd, *dbgKey, *dbgEa,false,s/4);
             cout << endl;
-        }
+#endif
 
         // Now call Three4Two which will recurse until only two numbers are left
         internalThree4Two(aa, bb, cc, dd, s / 4, active_slots);
 
 
-        if (debug) {
+#ifdef DEBUG_PRINTOUT
             cout << "Recursion concluded with a: ";
             printBinaryNums(aa, *dbgKey, *dbgEa,false,s/4);
             cout << ", b: ";
             printBinaryNums( bb, *dbgKey, *dbgEa,false,s/4);
             cout << endl;
-        }
+#endif
 
         // Final addition
         addTwoNumbers(sum, aa, bb, 0, unpackSlotEncoding);
