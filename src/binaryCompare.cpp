@@ -164,10 +164,10 @@ void compareTwoNumbers(CtPtrs& max, CtPtrs& min, Ctxt& mu, Ctxt& ni,
   }
 
   // Check that we have enough levels, try to bootstrap otherwise
-  if (findMinLevel({&a,&b}) < NTL::NumBits(bSize+1)+2)
-    packedRecrypt(a,b,unpackSlotEncoding);
-  if (findMinLevel({&a,&b}) < NTL::NumBits(bSize)+1) // the bear minimum
-    throw std::logic_error("not enough levels for comparison");
+//  if (findMinLevel({&a,&b}) < NTL::NumBits(bSize+1)+2)
+//    packedRecrypt(a,b,unpackSlotEncoding);
+//  if (findMinLevel({&a,&b}) < NTL::NumBits(bSize)+1) // the bear minimum
+//    throw std::logic_error("not enough levels for comparison");
 
   // NOTE: this procedure minimizes the number of multiplications,
   //       but it may use one level too many. Can we optimize it?

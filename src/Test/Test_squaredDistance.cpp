@@ -120,9 +120,9 @@ int main(int argc, char *argv[]) {
     else {
         double add2NumsLvls = log(bitSize + 1) / log(2.0);
         double mult2NumLevls = log(bitSize + 1) / log(1.5) + log(2 * (bitSize + 1)) / log(2.0);
-        // double internalAddLvls = 2 * log(active_slots) / log(2.0); // just a guess
-        // double internalMinLvls = 2; // just a guess
-        L = ceil(add2NumsLvls + mult2NumLevls) + 10;
+        double internalAddLvls = 8; // HARDCODED for now
+        double internalMinLvls = 12; // just a guess
+        L = ceil(add2NumsLvls + mult2NumLevls + internalAddLvls + internalMinLvls);
     }
 
     if (verbose) {
@@ -289,7 +289,7 @@ int main(int argc, char *argv[]) {
     } // get rid of the wrapper
 
 
-    vector<long> pInternalSum(ea.size());
+    vector<long> pInternalSum(sets);
     if (verbose) {
         CheckCtxt(eInternalSum[lsize(eInternalSum) - 1], "after internal addition");
 
@@ -297,72 +297,54 @@ int main(int argc, char *argv[]) {
         bool correct = true;
         for (int i = 0; i < sets; ++i) {
             for (int j = 0; j < active_slots; ++j) {
-                pInternalSum[i] += pProduct[i*active_slots + j];
+                pInternalSum[i] += pProduct[i * active_slots + j];
             }
-            if (slots[i*active_slots] != pInternalSum[i]) {
+            if (slots[i * active_slots] != pInternalSum[i]) {
                 correct = false;
-                cout << "internalAdd error at " << i*active_slots << ":";
-                cout << "sum from " << i*active_slots<< " to " << (i+1)*active_slots - 1 << "(";
-                for(int j = 0; j < active_slots; ++j) {
-                    cout << i*active_slots + j<<  ":" << pProduct[i*active_slots + j] << " ";
+                cout << "internalAdd error at " << i * active_slots << ":";
+                cout << "sum from " << i * active_slots << " to " << (i + 1) * active_slots - 1 << "(";
+                for (int j = 0; j < active_slots; ++j) {
+                    cout << i * active_slots + j << ":" << pProduct[i * active_slots + j] << " ";
                 }
-                cout << ") was " << slots[i*active_slots] << " should be:"
+                cout << ") was " << slots[i * active_slots] << " should be:"
                      << pInternalSum[i] << endl;
             }
         }
         if (correct) {
             cout << "internalAdd succeeded!" << endl;
+            cout << "Current bitsize: " << eInternalSum.length() << endl;
         }
     }
 
 
 
     ////////// INTERNAL MIN
-    // Test internal sort
-    // Create the indices
 
     // For the indices, find out how many bits we need:
     long bits = _ntl_g2logs(ea.size() / active_slots + 1);
     // Generate the fitting index at each position
     vector<long> pIndices(ea.size(), 1); //using 1 instead of 0 to make errors easier to spot
     int index = 0;
-    for (
-            int i = 0;
-            i < ea.
-
-                    size();
-
-            ++i) {
+    for (int i = 0; i < ea.size(); ++i) {
         if (i % active_slots == 0) {
-            pIndices[i] =
-                    index;
-            ++
-                    index;
+            pIndices[i] = index;
+            ++index;
         }
     }
 
     NTL::Vec<Ctxt> eIndices;
-// Encode them
-    resize(eIndices, bits, Ctxt(secKey)
-    );
-    for (
-            long i = 0;
-            i < bits;
-            i++) {
+    // Encode them
+    resize(eIndices, bits, Ctxt(secKey));
+    for (long i = 0; i < bits; i++) {
         std::vector<long> t = pIndices;
-        for (
-            long &l
-                : t) {
+        for (long &l                : t) {
             l = (l >> i) & 1;
         }
         ZZX zzx_t;
-        ea.
-                encode(zzx_t, t
-        );
-        eIndices[i].
-                DummyEncrypt(zzx_t);
+        ea.encode(zzx_t, t);
+        eIndices[i].DummyEncrypt(zzx_t);
         if (bootstrap) {
-// put them at a lower level
+            // put them at a lower level
             eIndices[i].modDownToLevel(5);
         }
     }
@@ -372,17 +354,33 @@ int main(int argc, char *argv[]) {
     { // Wrapper
         CtPtrs_VecCt eev(eInternalSum);
         CtPtrs_VecCt eei(eIndices);
-        internalMin(eev, eei, active_slots, &unpackSlotEncoding
-        );
-        decryptBinaryNums(v_slots, eev, secKey, ea
-        );
-        decryptBinaryNums(i_slots, eei, secKey, ea
-        );
+        internalMin(eev, eei, active_slots, &unpackSlotEncoding);
+        decryptBinaryNums(v_slots, eev, secKey, ea, true, true);
+        decryptBinaryNums(i_slots, eei, secKey, ea, false, true);
     }
-    if (verbose)
-        CheckCtxt(eInternalSum[lsize(eInternalSum) - 1],
-                  "after internal min");
+    if (verbose) {
+        CheckCtxt(eInternalSum[lsize(eInternalSum) - 1], "after internal min");
+        cout << "Minimum level: " << findMinLevel(CtPtrs_VecCt(eInternalSum)) << endl;
 
+        bool correct = true;
+
+        //find the plaintext minimum, by only looking at multiples of active_slots
+        long pMin = LONG_MAX;
+        long pMinIndex = -1;
+        for (int i = 0; i < sets; ++i) {
+            if (pInternalSum[i] < pMin) {
+                pMin = pInternalSum[i];
+                pMinIndex = pIndices[i*active_slots];
+            }
+        }
+
+        if (v_slots[0] != pMin || i_slots[0] != pMinIndex) {
+            cout << "internalMin error: min value was= " << v_slots[0] << ",  should be:" << pMin;
+            cout << " and index was=" << i_slots[0] << " , should be: " << pMinIndex;
+        } else {
+            cout << "internalMin succeeded!" << endl;
+        }
+    }
 //TODO: Check min result
 
 

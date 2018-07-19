@@ -1450,7 +1450,6 @@ void internalMinHelper(CtPtrs &values, CtPtrs &indices, long interval, long sets
         *values[i] = *mmin[i];
     }
 
-
 }
 
 
@@ -1464,6 +1463,13 @@ void internalMin(CtPtrs &values, CtPtrs &indices, long interval, vector<zzX> *un
     if (ct_ptr == nullptr) {
         return;
     }
+
+#ifdef DEBUG_PRINTOUT
+    cout << "looking for minimum in: \n";
+    printBinaryNums(values,*dbgKey,*dbgEa,true,1);
+    cout << "\n with interval " << interval << " and indices: \n";
+    printBinaryNums(indices,*dbgKey,*dbgEa,true,1);
+#endif
 
     const EncryptedArray &ea = *(ct_ptr->getContext().ea);
     long sets = ea.size() / interval;
