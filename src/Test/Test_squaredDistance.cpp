@@ -120,9 +120,15 @@ int main(int argc, char *argv[]) {
     else {
         double add2NumsLvls = log(bitSize + 1) / log(2.0);
         double mult2NumLevls = log(bitSize + 1) / log(1.5) + log(2 * (bitSize + 1)) / log(2.0);
-        double internalAddLvls = 8; // HARDCODED for now
-        double internalMinLvls = 12; // just a guess
-        L = ceil(add2NumsLvls + mult2NumLevls + internalAddLvls + internalMinLvls);
+        long bitSizeMult = 2 * (bitSize + 1);
+        long bitSizeInternalAdd = ceil(log(active_slots * ((1 << bitSizeMult) - 1)) / log(2.0));
+        double internalAddLvls = log(bitSizeInternalAdd) / log(2.0) + /*final add operation */
+                                 (log(60 / active_slots) / log(2.0)); // previous guess:  1:8
+
+        double internalMinLvls = (log(bitSizeInternalAdd) / log(2.0)) /*compare operation */
+                                 * (log(60 / active_slots) / log(2.0)); // previous guess for 1:12
+        L = ceil(add2NumsLvls) + ceil(mult2NumLevls) + ceil(internalAddLvls) + ceil(internalMinLvls) ;
+
     }
 
     if (verbose) {
