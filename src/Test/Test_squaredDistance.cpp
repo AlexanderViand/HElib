@@ -297,12 +297,16 @@ int main(int argc, char *argv[]) {
         bool correct = true;
         for (int i = 0; i < sets; ++i) {
             for (int j = 0; j < active_slots; ++j) {
-                pInternalSum[i] += pProduct[i * j];
+                pInternalSum[i] += pProduct[i*active_slots + j];
             }
             if (slots[i] != pInternalSum[i]) {
                 correct = false;
-                cout << "internalAdd error at " << i << ":";
-                cout << "sum from " << i << " to " << i + active_slots - 1 << " was " << slots[i] << " should be:"
+                cout << "internalAdd error at " << i*active_slots << ":";
+                cout << "sum from " << i*active_slots<< " to " << 2*active_slots - 1 << "(";
+                for(int j = 0; j < active_slots; ++j) {
+                    cout << i*active_slots + j<<  ":" << pProduct[i*active_slots + j] << " ";
+                }
+                cout << ") was " << slots[i] << " should be:"
                      << pInternalSum[i] << endl;
             }
         }
