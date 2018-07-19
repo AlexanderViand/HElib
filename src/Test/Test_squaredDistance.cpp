@@ -39,33 +39,55 @@ static bool verbose = true;
 
 static long mValues[][15] = {
 // { p, phi(m),   m,   d, m1, m2, m3,    g1,   g2,   g3, ord1,ord2,ord3, B,c}
-        {2, 48,    105,   12, 3,    35,  0,   71,    76,    0,     2,   2,   0,   25, 2},
-        {2, 600,   1023,  10, 11,   93,  0,   838,   584,   0,     10,  6,   0,   25, 2},
-        {2, 2304,  4641,  24, 7,    3,   221, 3979,  3095,  3760,  6,   2,   -8,  25, 3},
-        {2, 5460,  8193,  26, 8193, 0,   0,   46,    0,     0,     210, 0,   0,   25, 3},
-        {2, 8190,  8191,  13, 8191, 0,   0,   39,    0,     0,     630, 0,   0,   25, 3},
-        {2, 10752, 11441, 48, 17,   673, 0,   4712,  2024,  0,     16,  -14, 0,   25, 3},
-        {2, 15004, 15709, 22, 23,   683, 0,   4099,  13663, 0,     22,  31,  0,   25, 3},
-        {2, 27000, 32767, 15, 31,   7,   151, 11628, 28087, 25824, 30,  6,   -10, 28, 4}
+        {2, 48,    105,   12, 3,    35,  0,   71,    76,    0,     2,   2,   0,   25, 2}, //0: 4 slots      (2x2)
+        {2, 600,   1023,  10, 11,   93,  0,   838,   584,   0,     10,  6,   0,   25, 2}, //1: 60 slots     (10x6)
+        {2, 2304,  4641,  24, 7,    3,   221, 3979,  3095,  3760,  6,   2,   -8,  25, 3}, //2: 96 slots     (6x2x8)
+        {2, 5460,  8193,  26, 8193, 0,   0,   46,    0,     0,     210, 0,   0,   25, 3}, //3: 210 slots    (210)
+        {2, 8190,  8191,  13, 8191, 0,   0,   39,    0,     0,     630, 0,   0,   25, 3}, //4: 639 slots    (630)
+        {2, 10752, 11441, 48, 17,   673, 0,   4712,  2024,  0,     16,  -14, 0,   25, 3}, //5: 224 slots    (16x14)
+        {2, 15004, 15709, 22, 23,   683, 0,   4099,  13663, 0,     22,  31,  0,   25, 3}, //6: 682 slots    (22x31)
+        {2, 27000, 32767, 15, 31,   7,   151, 11628, 28087, 25824, 30,  6,   -10, 28, 4}  //7: 1800 slots   (30x6x10)
 };
+
+
+template<typename T>
+void
+encrypt_bits(T &out, vector<long> in, long bitSize, bool bootstrap, const FHESecKey &secKey, const EncryptedArray &ea) {
+    resize(out, bitSize, Ctxt(secKey));
+    for (long i = 0; i < bitSize; i++) {
+        std::vector<long> t = in;
+        for (long &l : t) {
+            if (l < 0) {
+                // Two's complement
+                l += (1 << bitSize);
+            }
+            l = (l >> i) & 1;
+        }
+        ea.skEncrypt(out[i], secKey, t);
+        if (bootstrap) {
+            out[i].modDownToLevel(5);
+        }
+    }
+}
 
 int main(int argc, char *argv[]) {
     ArgMapping amap;
-    long prm = 7;
+    long prm = 1;
     amap.arg("prm", prm, "parameter size (0-tiny,...,7-huge)");
     long bitSize = 8;
     amap.arg("bitSize", bitSize, "bitSize of input integers (<=32)");
+    long active_slots = 10;
+    amap.arg("active_slots", active_slots, "Number of slots that belong to one set");
     bool bootstrap = false;
     amap.arg("bootstrap", bootstrap, "test multiplication with bootstrapping");
     long seed = 0;
     amap.arg("seed", seed, "PRG seed");
-    long nthreads = 12;
+    long nthreads = 4;
     amap.arg("nthreads", nthreads, "number of threads");
     amap.arg("verbose", verbose, "print more information");
     amap.parse(argc, argv);
     if (seed) NTL::SetSeed(ZZ(seed));
     if (nthreads > 1) NTL::SetNumThreads(nthreads);
-
     if (bitSize <= 0) bitSize = 5;
     else if (bitSize > 32) bitSize = 32;
 
@@ -96,11 +118,11 @@ int main(int argc, char *argv[]) {
     long L;
     if (bootstrap) L = 30; // that should be enough
     else {
-        double add2NumsLvls = log(bitSize) / log(2.0);
-        double squareLvls = log(2 * bitSize) / log(2.0);
-        double internalAddLvls = 2; // just a guess
-        double internalMinLvls = 2; // just a guess
-        L = 3 + ceil(add2NumsLvls + squareLvls + internalAddLvls + internalMinLvls) + 16;
+        double add2NumsLvls = log(bitSize+1) / log(2.0);
+        double mult2NumLevls = 1 + log(bitSize+1) / log(1.5) + log(2 * (bitSize+1)) / log(2.0);
+        // double internalAddLvls = 2 * log(active_slots) / log(2.0); // just a guess
+        // double internalMinLvls = 2; // just a guess
+        L = ceil(add2NumsLvls) + ceil(mult2NumLevls);
     }
 
     if (verbose) {
@@ -137,75 +159,86 @@ int main(int argc, char *argv[]) {
 #endif
 
     const EncryptedArray &ea = *(secKey.getContext().ea);
-    if (verbose) cout << "Current settings give " << ea.size() << " slots." << endl;
+    if (verbose) {
+        cout << "Current settings give " << ea.size() << " slots (";
+        for (int i = 0; i < ea.dimension() - 1; ++i) {
+            cout << ea.sizeOfDimension(i) << "x";
+        }
+        cout << ea.sizeOfDimension(ea.dimension() - 1) << ")." << endl;
+    }
+    assert(active_slots <= ea.size());
+
 
     ////////////////////////////////// START TEST //////////////////////////
 
 
 
     // Choose a vector of random numbers
-    long active_slots = 128;
-    assert(2 * active_slots <= ea.size());
+    // Fill anything that isn't an active value with ones (for testing, in reality, would be zeros)
     std::vector<long> pa(ea.size(), 1);
     std::vector<long> pb(ea.size(), 1);
-    for (long i = 0; i < 2 * active_slots; ++i) {
+    // We have
+    long sets = ea.size() / active_slots;
+    for (long i = 0; i < sets * active_slots; ++i) {
+        // Two's complement!
         pa[i] = RandomBits_long(bitSize);
+        if (pa[i] > (1 << (bitSize - 1)) - 1) {
+            // Reverse Two's complement
+            pa[i] = -(1 << bitSize) + pa[i];
+        }
         pb[i] = RandomBits_long(bitSize);
-#ifdef  DEBUG_PRINTOUT
-        cout << "pa[" << i << "]: " << pa[i] << endl;
-        cout << "pb[" << i << "]: " << pb[i] << endl;
-#endif
+        if (pb[i] > (1 << (bitSize - 1)) - 1) {
+            // Reverse Two's complement
+            pb[i] = -(1 << bitSize) + pb[i];
+        }
     }
-
+    if (verbose) {
+        cout << "pa: " << pa << endl;
+        cout << "pb: " << pb << endl;
+    }
     // Encrypt the individual bits
     NTL::Vec<Ctxt> eSum, enca, encb;
+    encrypt_bits(enca, pa, bitSize, bootstrap, secKey, ea);
+    encrypt_bits(encb, pb, bitSize, bootstrap, secKey, ea);
 
-    resize(enca, bitSize, Ctxt(secKey));
-    resize(encb, bitSize, Ctxt(secKey));
-    for (long i = 0; i < bitSize; i++) {
-        std::vector<long> t_pa = pa;
-        std::vector<long> t_pb = pb;
-        for (long &l : t_pa) {
-            l = (l >> i) & 1;
-        }
-        for (long &l : t_pb) {
-            l = (l >> i) & 1;
-        }
-        ea.skEncrypt(enca[i], secKey, t_pa);
-        ea.skEncrypt(encb[i], secKey, t_pb);
-        if (bootstrap) {
-            // put them at a lower level
-            enca[i].modDownToLevel(5);
-            encb[i].modDownToLevel(5);
-        }
-    }
 
     if (verbose) {
         cout << "\n  bits-size " << bitSize << endl;
         CheckCtxt(enca[0], "b4 addition");
+        cout << "Minimum level: " << findMinLevel(CtPtrs_VecCt(enca)) << endl;
     }
+
+    /////// SIGN EXTEND PRIOR TO ADDITION
+    resize(enca, bitSize + 1, enca[bitSize - 1]);
+    resize(encb, bitSize + 1, encb[bitSize - 1]);
 
     /////////// ADDITION
     vector<long> slots;
-    // Outsize == bitsize because only then does two's complement addition work properly!
     {
         CtPtrs_VecCt eep(eSum);  // A wrapper around the output vector
+
+        // Outsize == input size because only then does two's complement addition work properly!
         addTwoNumbers(eep, CtPtrs_VecCt(enca), CtPtrs_VecCt(encb),
-                      bitSize, &unpackSlotEncoding);
-        decryptBinaryNums(slots, eep, secKey, ea);
-    } // get rid of the wrapper
-    if (verbose) CheckCtxt(eSum[lsize(eSum) - 1], "after addition");
-    long test_slot = 0;
-    long pSum = pa[test_slot] + pb[test_slot];
-//  if (slots[0] != ((pa[test_slot]+pb[test_slot]))) {
-////    cout << "addTwoNums error: pa="<<pa[test_slot]<<", pb="<<pb[test_slot]
-////         << ", but pSum="<<slots[0]
-////         << " (should be ="<<(pSum)<<")\n";
-////    exit(0);
-////  }
-////  else
+                      enca.length(), &unpackSlotEncoding);
+        decryptBinaryNums(slots, eep, secKey, ea,true,true);
+    } // get rid of wrapper
+    vector<long> pSum(ea.size());
     if (verbose) {
-        cout << "addTwoNums succeeded: " << pa[test_slot] << "+" << pb[test_slot] << "=" << slots[0] << endl;
+        CheckCtxt(eSum[lsize(eSum) - 1], "after addition");
+        cout << "Minimum level: " << findMinLevel(CtPtrs_VecCt(eSum)) << endl;
+
+        bool correct = true;
+        for (int i = 0; i < sets * active_slots; ++i) {
+            pSum[i] = pa[i] + pb[i];
+            if (slots[i] != pSum[i]) {
+                correct = false;
+                cout << "addTwoNumbers error at " << i << ":";
+                cout << pa[i] << " + " << pb[i] << " was " << slots[i] << " should be:" << pSum[i] << endl;
+            }
+        }
+        if (correct) {
+            cout << "addTwoNumbers succeeded!" << endl;
+        }
     }
 
     ///////// SQUARING (currently just a sign-extended standard multiplication)
@@ -213,29 +246,36 @@ int main(int argc, char *argv[]) {
     // Duplicate the output
     NTL::Vec<Ctxt> eSum2 = eSum;
     // Sign-extend the numbers
-    int newSize = 2 * bitSize;
-    resize(eSum, newSize, eSum[bitSize - 1]);
-    resize(eSum2, newSize, eSum2[bitSize - 1]);
+    int newSize = 2 * eSum.length();
+    resize(eSum, newSize, eSum[eSum.length() - 1]);
+    resize(eSum2, newSize, eSum2[eSum2.length() - 1]);
 
     // Now multiply
-    long pProd = slots[test_slot] * slots[test_slot];
-    // Test positive multiplication
+    //TODO: Baugh-Wooley multiplier to avoid sign extension + do squaring optimization?
     NTL::Vec<Ctxt> eProduct;
     {
         CtPtrs_VecCt eep(eProduct);  // A wrappers around the output vector
         multTwoNumbers(eep, CtPtrs_VecCt(eSum), CtPtrs_VecCt(eSum2),/*negative=*/false,
-                       2 * bitSize, &unpackSlotEncoding);
-        decryptBinaryNums(slots, eep, secKey, ea);
+                       newSize, &unpackSlotEncoding);
+        decryptBinaryNums(slots, eep, secKey, ea,true,true);
     } // get rid of the wrapper
-    if (verbose)
+    vector<long> pProduct(ea.size());
+    if (verbose) {
         CheckCtxt(eProduct[lsize(eProduct) - 1], "after multiplication");
-
-//    if (slots[0] != pProd) {
-//        cout << "Positive product error" << endl;
-//        exit(0);
-//    } else
-        if (verbose) {
-        cout << "positive product succeeded: " << endl;
+        cout << "Minimum level: " << findMinLevel(CtPtrs_VecCt(eProduct)) << endl;
+        cout << "eProduct[size-1] level:" << eProduct[lsize(eProduct) - 1].findBaseLevel() << endl;
+        bool correct = true;
+        for(int i = 0; i < sets * active_slots; ++i) {
+            pProduct[i] = pSum[i] * pSum[i];
+            if (slots[i] != pProduct[i]) {
+                correct = false;
+                cout << "multTwoNumbers error at " << i << ":";
+                cout << pSum[i] << " * " << pSum[i] << " was " << slots[i] << " should be:" << pProduct[i] << endl;
+            }
+        }
+        if (correct) {
+            cout << "multTwoNumbers succeeded!" << endl;
+        }
     }
 
     ////////// INTERNAL ADD
@@ -256,7 +296,7 @@ int main(int argc, char *argv[]) {
 //        exit(0);
 //    } else
     if (verbose) {
-        cout << "internal add succeeded: " << slots[test_slot] << endl;
+//        cout << "internal add succeeded: " << slots[test_slot] << endl;
     }
 
 
@@ -308,365 +348,4 @@ int main(int argc, char *argv[]) {
 
 
     return 0;
-}
-
-
-void testProduct(FHESecKey &secKey, long bitSize, long bitSize2,
-                 long outSize, bool bootstrap) {
-    const EncryptedArray &ea = *(secKey.getContext().ea);
-    long mask = (outSize ? ((1L << outSize) - 1) : -1);
-
-    // Choose two random n-bit integers
-    long pa = RandomBits_long(bitSize);
-    long pb = RandomBits_long(bitSize2);
-
-    // Encrypt the individual bits
-    NTL::Vec<Ctxt> eProduct, enca, encb;
-
-    resize(enca, bitSize, Ctxt(secKey));
-    for (long i = 0; i < bitSize; i++) {
-        secKey.Encrypt(enca[i], ZZX((pa >> i) & 1));
-        if (bootstrap) { // put them at a lower level
-            enca[i].modDownToLevel(5);
-        }
-    }
-    resize(encb, bitSize2, Ctxt(secKey));
-    for (long i = 0; i < bitSize2; i++) {
-        secKey.Encrypt(encb[i], ZZX((pb >> i) & 1));
-        if (bootstrap) { // put them at a lower level
-            encb[i].modDownToLevel(5);
-        }
-    }
-    if (verbose) {
-        cout << "\n  bits-size " << bitSize << '+' << bitSize2;
-        if (outSize > 0) cout << "->" << outSize;
-        CheckCtxt(encb[0], "b4 multiplication");
-    }
-    // Test positive multiplication
-    vector<long> slots;
-    {
-        CtPtrs_VecCt eep(eProduct);  // A wrappers around the output vector
-        multTwoNumbers(eep, CtPtrs_VecCt(enca), CtPtrs_VecCt(encb),/*negative=*/false,
-                       outSize, &unpackSlotEncoding);
-        decryptBinaryNums(slots, eep, secKey, ea);
-    } // get rid of the wrapper
-    if (verbose)
-        CheckCtxt(eProduct[lsize(eProduct) - 1], "after multiplication");
-    long pProd = pa * pb;
-    if (slots[0] != ((pa * pb) & mask)) {
-        cout << "Positive product error: pa=" << pa << ", pb=" << pb
-             << ", but product=" << slots[0]
-             << " (should be " << pProd << '&' << mask << '=' << (pProd & mask) << ")\n";
-        exit(0);
-    } else if (verbose) {
-        cout << "positive product succeeded: ";
-        if (outSize) cout << "bottom " << outSize << " bits of ";
-        cout << pa << "*" << pb << "=" << slots[0] << endl;
-    }
-    // Test negative multiplication
-    secKey.Encrypt(encb[bitSize2 - 1], ZZX(1));
-    decryptBinaryNums(slots, CtPtrs_VecCt(encb), secKey, ea, /*negative=*/true);
-    pb = slots[0];
-    eProduct.kill();
-    {
-        CtPtrs_VecCt eep(eProduct);  // A wrappers around the output vector
-        multTwoNumbers(eep, CtPtrs_VecCt(enca), CtPtrs_VecCt(encb),/*negative=*/true,
-                       outSize, &unpackSlotEncoding);
-        decryptBinaryNums(slots, eep, secKey, ea, /*negative=*/true);
-    } // get rid of the wrapper
-    if (verbose)
-        CheckCtxt(eProduct[lsize(eProduct) - 1], "after multiplication");
-    pProd = pa * pb;
-    if ((slots[0] & mask) != (pProd & mask)) {
-        cout << "Negative product error: pa=" << pa << ", pb=" << pb
-             << ", but product=" << slots[0]
-             << " (should be " << pProd << '&' << mask << '=' << (pProd & mask) << ")\n";
-        exit(0);
-    } else if (verbose) {
-        cout << "negative product succeeded: ";
-        if (outSize) cout << "bottom " << outSize << " bits of ";
-        cout << pa << "*" << pb << "=" << slots[0] << endl;
-    }
-
-#ifdef DEBUG_PRINTOUT
-    const Ctxt *minCtxt = nullptr;
-    long minLvl = 1000;
-    for (const Ctxt &c: eProduct) {
-        long lvl = c.findBaseLevel();
-        if (lvl < minLvl) {
-            minCtxt = &c;
-            minLvl = lvl;
-        }
-    }
-    decryptAndPrint((cout << " after multiplication: "), *minCtxt, secKey, ea, 0);
-    cout << endl;
-#endif
-}
-
-
-void testAdd(FHESecKey &secKey, long bitSize1, long bitSize2,
-             long outSize, bool bootstrap) {
-    const EncryptedArray &ea = *(secKey.getContext().ea);
-    long mask = (outSize ? ((1L << outSize) - 1) : -1);
-
-    // Choose two random n-bit integers
-    long pa = RandomBits_long(bitSize1);
-    long pb = RandomBits_long(bitSize2);
-
-    // Encrypt the individual bits
-    NTL::Vec<Ctxt> eSum, enca, encb;
-
-    resize(enca, bitSize1, Ctxt(secKey));
-    for (long i = 0; i < bitSize1; i++) {
-        secKey.Encrypt(enca[i], ZZX((pa >> i) & 1));
-        if (bootstrap) { // put them at a lower level
-            enca[i].modDownToLevel(5);
-        }
-    }
-    resize(encb, bitSize2, Ctxt(secKey));
-    for (long i = 0; i < bitSize2; i++) {
-        secKey.Encrypt(encb[i], ZZX((pb >> i) & 1));
-        if (bootstrap) { // put them at a lower level
-            encb[i].modDownToLevel(5);
-        }
-    }
-    if (verbose) {
-        cout << "\n  bits-size " << bitSize1 << '+' << bitSize2;
-        if (outSize > 0) cout << "->" << outSize;
-        cout << endl;
-        CheckCtxt(encb[0], "b4 addition");
-    }
-
-    // Test addition
-    vector<long> slots;
-    {
-        CtPtrs_VecCt eep(eSum);  // A wrapper around the output vector
-        addTwoNumbers(eep, CtPtrs_VecCt(enca), CtPtrs_VecCt(encb),
-                      outSize, &unpackSlotEncoding);
-        decryptBinaryNums(slots, eep, secKey, ea);
-    } // get rid of the wrapper
-    if (verbose) CheckCtxt(eSum[lsize(eSum) - 1], "after addition");
-    long pSum = pa + pb;
-    if (slots[0] != ((pa + pb) & mask)) {
-        cout << "addTwoNums error: pa=" << pa << ", pb=" << pb
-             << ", but pSum=" << slots[0]
-             << " (should be =" << (pSum & mask) << ")\n";
-        exit(0);
-    } else if (verbose) {
-        cout << "addTwoNums succeeded: ";
-        if (outSize) cout << "bottom " << outSize << " bits of ";
-        cout << pa << "+" << pb << "=" << slots[0] << endl;
-    }
-
-#ifdef DEBUG_PRINTOUT
-    const Ctxt *minCtxt = nullptr;
-    long minLvl = 1000;
-    for (const Ctxt &c: eSum) {
-        long lvl = c.findBaseLevel();
-        if (lvl < minLvl) {
-            minCtxt = &c;
-            minLvl = lvl;
-        }
-    }
-    decryptAndPrint((cout << " after addition: "), *minCtxt, secKey, ea, 0);
-    cout << endl;
-#endif
-}
-
-
-void testInternalAdd(FHESecKey &secKey, long bitSize,
-                     long outSize, bool bootstrap) {
-    const EncryptedArray &ea = *(secKey.getContext().ea);
-    long mask = (outSize ? ((1L << outSize) - 1) : -1);
-
-    // Choose a vector of random numbers
-    long active_slots = 17;
-    assert(2 * active_slots <= ea.size());
-    std::vector<long> pa(ea.size(), 1);
-    for (long i = 0; i < 2 * active_slots; ++i) {
-        pa[i] = RandomBits_long(bitSize);
-#ifdef  DEBUG_PRINTOUT
-        cout << "pa[" << i << "]: " << pa[i] << endl;
-#endif
-
-    }
-
-    // Encrypt the individual bits
-    NTL::Vec<Ctxt> eSum, enca;
-
-    resize(enca, bitSize, Ctxt(secKey));
-    for (long i = 0; i < bitSize; i++) {
-        std::vector<long> t_pa = pa;
-        for (long &l : t_pa) {
-            l = (l >> i) & 1;
-        }
-        ea.skEncrypt(enca[i], secKey, t_pa);
-        if (bootstrap) {
-            // put them at a lower level
-            enca[i].modDownToLevel(5);
-        }
-    }
-
-    if (verbose) {
-        cout << "\n  bits-size " << bitSize;
-        if (outSize > 0) cout << "->" << outSize;
-        cout << endl;
-        CheckCtxt(enca[0], "b4 internal addition");
-    }
-
-    // Test internal addition
-    vector<long> slots;
-    {
-        CtPtrs_VecCt eep(eSum);  // A wrapper around the output vector
-        internalAdd(eep, CtPtrs_VecCt(enca), active_slots, &unpackSlotEncoding);
-        decryptBinaryNums(slots, eep, secKey, ea);
-    } // get rid of the wrapper
-    if (verbose) CheckCtxt(eSum[lsize(eSum) - 1], "after internal addition");
-    long pSum = std::accumulate(pa.begin() + active_slots, pa.begin() + 2 * active_slots, 0);
-
-    if (slots[active_slots] != ((pSum) & mask)) {
-        cout << "internal add error: pSum=" << slots[0]
-             << " (should be =" << (pSum & mask) << ")\n";
-        exit(0);
-    } else if (verbose) {
-        cout << "internal add succeeded: ";
-        if (outSize)
-            cout << "bottom " << outSize << " bits of sum = "
-                 << slots[active_slots] << endl;
-    }
-
-#ifdef DEBUG_PRINTOUT
-    const Ctxt *minCtxt = nullptr;
-    long minLvl = 1000;
-    for (const Ctxt &c: eSum) {
-        long lvl = c.findBaseLevel();
-        if (lvl < minLvl) {
-            minCtxt = &c;
-            minLvl = lvl;
-        }
-    }
-    decryptAndPrint((cout << " after internal addition: "), *minCtxt, secKey, ea, 0);
-    cout << endl;
-#endif
-}
-
-void testInternalMin(FHESecKey &secKey, long bitSize, bool bootstrap) {
-    const EncryptedArray &ea = *(secKey.getContext().ea);
-
-    // Choose a vector of random numbers
-    long interval = 15; // 1 => all slots, 2 => every second, 3 => every third, etc
-    std::vector<long> pValues(ea.size(), 1);
-    for (long i = 0; i < ea.size(); ++i) {
-        if (i % interval == 0) {
-            pValues[i] = RandomBits_long(bitSize);
-#ifdef  DEBUG_PRINTOUT
-            cout << "pValues[" << i << "]: " << pValues[i] << endl;
-#endif
-        }
-    }
-
-    // Encrypt the individual bits
-    NTL::Vec<Ctxt> eValues, eIndices;
-
-    resize(eValues, bitSize, Ctxt(secKey));
-    for (long i = 0; i < bitSize; i++) {
-        std::vector<long> t_pa = pValues;
-        for (long &l : t_pa) {
-            l = (l >> i) & 1;
-        }
-        ea.skEncrypt(eValues[i], secKey, t_pa);
-        if (bootstrap) {
-            // put them at a lower level
-            eValues[i].modDownToLevel(5);
-        }
-    }
-
-    if (verbose) {
-        cout << "\n  bits-size " << bitSize << endl;
-        CheckCtxt(eValues[0], "b4 internal addition");
-    }
-
-    // For the indices, find out how many bits we need:
-    long bits = _ntl_g2logs(ea.size() / interval + 1);
-    // Generate the fitting index at each position
-    vector<long> pIndices(ea.size(), 1); //using 1 instead of 0 to make errors easier to spot
-    int index = 0;
-    for (int i = 0; i < ea.size(); ++i) {
-        if (i % interval == 0) {
-            pIndices[i] = index;
-            ++index;
-        }
-    }
-
-    // Encrypt the indices
-    resize(eIndices, bits, Ctxt(secKey));
-    for (long i = 0; i < bits; i++) {
-        std::vector<long> t = pIndices;
-        for (long &l : t) {
-            l = (l >> i) & 1;
-        }
-        ea.skEncrypt(eIndices[i], secKey, t);
-        if (bootstrap) {
-            // put them at a lower level
-            eIndices[i].modDownToLevel(5);
-        }
-    }
-
-    // Test internal sort
-    vector<long> v_slots;
-    vector<long> i_slots;
-    { // Wrappers
-        CtPtrs_VecCt eev(eValues);
-        CtPtrs_VecCt eei(eIndices);
-        internalMin(eev, eei, interval, &unpackSlotEncoding);
-        decryptBinaryNums(v_slots, eev, secKey, ea);
-        decryptBinaryNums(i_slots, eei, secKey, ea);
-    }
-    if (verbose) CheckCtxt(eValues[lsize(eValues) - 1], "after internal addition");
-
-    // All the values we care about should be at i % interval == 0
-    // Grab just the values into a new vector to sort
-    // Sorting rather than min because this was originally intended for sort, not min
-    vector<std::pair<long, long>> sorted;
-    for (int i = 0; i < ea.size(); ++i) {
-        if (i % interval == 0) {
-            sorted.emplace_back(std::make_pair(pValues[i], pIndices[i]));
-        }
-    }
-    sort(sorted.begin(), sorted.end());
-
-//#ifdef  DEBUG_PRINTOUT
-//    cout << "sorted input: [";
-//    for(auto &p : sorted) {
-//      cout << "(" << p.first << "," << p.second << "), ";
-//    }
-//    cout << "]" << endl;
-//#endif
-
-    // Now go and compare them:
-
-    if (v_slots[0] != (sorted[0].first)) {
-        cout << "internal min error: min=" << v_slots[0]
-             << " index=" << i_slots[0]
-             << " (should be min=" << (sorted[0].first)
-             << " index= " << (sorted[0].second)
-             << ")\n";
-        exit(0);
-    } else if (verbose) {
-        cout << "internal min succeeded";
-    }
-
-#ifdef DEBUG_PRINTOUT
-    const Ctxt *minCtxt = nullptr;
-    long minLvl = 1000;
-    for (const Ctxt &c: eValues) {
-        long lvl = c.findBaseLevel();
-        if (lvl < minLvl) {
-            minCtxt = &c;
-            minLvl = lvl;
-        }
-    }
-    decryptAndPrint((cout << " after internal min: "), *minCtxt, secKey, ea, 0);
-    cout << endl;
-#endif
 }
