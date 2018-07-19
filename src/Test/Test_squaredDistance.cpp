@@ -299,14 +299,14 @@ int main(int argc, char *argv[]) {
             for (int j = 0; j < active_slots; ++j) {
                 pInternalSum[i] += pProduct[i*active_slots + j];
             }
-            if (slots[i] != pInternalSum[i]) {
+            if (slots[i*active_slots] != pInternalSum[i]) {
                 correct = false;
                 cout << "internalAdd error at " << i*active_slots << ":";
-                cout << "sum from " << i*active_slots<< " to " << 2*active_slots - 1 << "(";
+                cout << "sum from " << i*active_slots<< " to " << (i+1)*active_slots - 1 << "(";
                 for(int j = 0; j < active_slots; ++j) {
                     cout << i*active_slots + j<<  ":" << pProduct[i*active_slots + j] << " ";
                 }
-                cout << ") was " << slots[i] << " should be:"
+                cout << ") was " << slots[i*active_slots] << " should be:"
                      << pInternalSum[i] << endl;
             }
         }

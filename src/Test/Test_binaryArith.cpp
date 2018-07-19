@@ -451,7 +451,7 @@ void testInternalAdd(FHESecKey& secKey, long bitSize,
   long pSum = std::accumulate(pa.begin()+active_slots, pa.begin()+2*active_slots, 0);
 
   if (slots[active_slots] != ((pSum)&mask)) {
-    cout << "internal add error: pSum="<<slots[0]
+    cout << "internal add error: pSum="<<slots[active_slots]
          << " (should be ="<<(pSum&mask)<<")\n";
     exit(0);
   }
