@@ -118,11 +118,11 @@ int main(int argc, char *argv[]) {
     long L;
     if (bootstrap) L = 30; // that should be enough
     else {
-        double add2NumsLvls = log(bitSize+1) / log(2.0);
-        double mult2NumLevls = 1 + log(bitSize+1) / log(1.5) + log(2 * (bitSize+1)) / log(2.0);
+        double add2NumsLvls = log(bitSize + 1) / log(2.0);
+        double mult2NumLevls = log(bitSize + 1) / log(1.5) + log(2 * (bitSize + 1)) / log(2.0);
         // double internalAddLvls = 2 * log(active_slots) / log(2.0); // just a guess
         // double internalMinLvls = 2; // just a guess
-        L = ceil(add2NumsLvls) + ceil(mult2NumLevls);
+        L = ceil(add2NumsLvls + mult2NumLevls) + 10;
     }
 
     if (verbose) {
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
         // Outsize == input size because only then does two's complement addition work properly!
         addTwoNumbers(eep, CtPtrs_VecCt(enca), CtPtrs_VecCt(encb),
                       enca.length(), &unpackSlotEncoding);
-        decryptBinaryNums(slots, eep, secKey, ea,true,true);
+        decryptBinaryNums(slots, eep, secKey, ea, true, true);
     } // get rid of wrapper
     vector<long> pSum(ea.size());
     if (verbose) {
@@ -257,7 +257,7 @@ int main(int argc, char *argv[]) {
         CtPtrs_VecCt eep(eProduct);  // A wrappers around the output vector
         multTwoNumbers(eep, CtPtrs_VecCt(eSum), CtPtrs_VecCt(eSum2),/*negative=*/false,
                        newSize, &unpackSlotEncoding);
-        decryptBinaryNums(slots, eep, secKey, ea,true,true);
+        decryptBinaryNums(slots, eep, secKey, ea, true, true);
     } // get rid of the wrapper
     vector<long> pProduct(ea.size());
     if (verbose) {
@@ -265,7 +265,7 @@ int main(int argc, char *argv[]) {
         cout << "Minimum level: " << findMinLevel(CtPtrs_VecCt(eProduct)) << endl;
         cout << "eProduct[size-1] level:" << eProduct[lsize(eProduct) - 1].findBaseLevel() << endl;
         bool correct = true;
-        for(int i = 0; i < sets * active_slots; ++i) {
+        for (int i = 0; i < sets * active_slots; ++i) {
             pProduct[i] = pSum[i] * pSum[i];
             if (slots[i] != pProduct[i]) {
                 correct = false;
@@ -279,25 +279,38 @@ int main(int argc, char *argv[]) {
     }
 
     ////////// INTERNAL ADD
-    NTL::Vec<Ctxt> eIntSum;
+    NTL::Vec<Ctxt> eInternalSum;
     long pIntSum = std::accumulate(slots.begin(), slots.begin() + active_slots, 0l);
     // Test internal addition
     {
-        CtPtrs_VecCt eep(eIntSum);  // A wrapper around the output vector
+        CtPtrs_VecCt eep(eInternalSum);  // A wrapper around the output vector
         internalAdd(eep, CtPtrs_VecCt(eProduct), active_slots, &unpackSlotEncoding);
-        decryptBinaryNums(slots, eep, secKey, ea);
+        decryptBinaryNums(slots, eep, secKey, ea, true, true);
     } // get rid of the wrapper
-    if (verbose) CheckCtxt(eSum[lsize(eSum) - 1], "after internal addition");
 
 
-//    if (slots[test_slot] != ((pIntSum))) {
-//        cout << "internal add error: pIntSum=" << slots[0]
-//             << " (should be =" << (pIntSum) << ")\n";
-//        exit(0);
-//    } else
+    vector<long> pInternalSum(ea.size());
     if (verbose) {
-//        cout << "internal add succeeded: " << slots[test_slot] << endl;
+        CheckCtxt(eInternalSum[lsize(eInternalSum) - 1], "after internal addition");
+
+        cout << "Minimum level: " << findMinLevel(CtPtrs_VecCt(eInternalSum)) << endl;
+        bool correct = true;
+        for (int i = 0; i < sets; ++i) {
+            for (int j = 0; j < active_slots; ++j) {
+                pInternalSum[i] += pProduct[i * j];
+            }
+            if (slots[i] != pInternalSum[i]) {
+                correct = false;
+                cout << "internalAdd error at " << i << ":";
+                cout << "sum from " << i << " to " << i + active_slots - 1 << " was " << slots[i] << " should be:"
+                     << pInternalSum[i] << endl;
+            }
+        }
+        if (correct) {
+            cout << "internalAdd succeeded!" << endl;
+        }
     }
+
 
 
     ////////// INTERNAL MIN
@@ -309,26 +322,43 @@ int main(int argc, char *argv[]) {
     // Generate the fitting index at each position
     vector<long> pIndices(ea.size(), 1); //using 1 instead of 0 to make errors easier to spot
     int index = 0;
-    for (int i = 0; i < ea.size(); ++i) {
+    for (
+            int i = 0;
+            i < ea.
+
+                    size();
+
+            ++i) {
         if (i % active_slots == 0) {
-            pIndices[i] = index;
-            ++index;
+            pIndices[i] =
+                    index;
+            ++
+                    index;
         }
     }
 
     NTL::Vec<Ctxt> eIndices;
-    // Encode them
-    resize(eIndices, bits, Ctxt(secKey));
-    for (long i = 0; i < bits; i++) {
+// Encode them
+    resize(eIndices, bits, Ctxt(secKey)
+    );
+    for (
+            long i = 0;
+            i < bits;
+            i++) {
         std::vector<long> t = pIndices;
-        for (long &l : t) {
+        for (
+            long &l
+                : t) {
             l = (l >> i) & 1;
         }
         ZZX zzx_t;
-        ea.encode(zzx_t, t);
-        eIndices[i].DummyEncrypt(zzx_t);
+        ea.
+                encode(zzx_t, t
+        );
+        eIndices[i].
+                DummyEncrypt(zzx_t);
         if (bootstrap) {
-            // put them at a lower level
+// put them at a lower level
             eIndices[i].modDownToLevel(5);
         }
     }
@@ -336,15 +366,20 @@ int main(int argc, char *argv[]) {
     vector<long> v_slots;
     vector<long> i_slots;
     { // Wrapper
-        CtPtrs_VecCt eev(eIntSum);
+        CtPtrs_VecCt eev(eInternalSum);
         CtPtrs_VecCt eei(eIndices);
-        internalMin(eev, eei, active_slots, &unpackSlotEncoding);
-        decryptBinaryNums(v_slots, eev, secKey, ea);
-        decryptBinaryNums(i_slots, eei, secKey, ea);
+        internalMin(eev, eei, active_slots, &unpackSlotEncoding
+        );
+        decryptBinaryNums(v_slots, eev, secKey, ea
+        );
+        decryptBinaryNums(i_slots, eei, secKey, ea
+        );
     }
-    if (verbose) CheckCtxt(eIntSum[lsize(eIntSum) - 1], "after internal min");
+    if (verbose)
+        CheckCtxt(eInternalSum[lsize(eInternalSum) - 1],
+                  "after internal min");
 
-    //TODO: Check min result
+//TODO: Check min result
 
 
     return 0;
