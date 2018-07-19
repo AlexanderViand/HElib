@@ -1116,7 +1116,9 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
         rotate(y2rot, -s / 2);
 
         if (active_slots % 2 != 0) {
+#ifdef DEBUG_PRINTOUT
             cout << "not an even number of slots: using mask";
+#endif
             // we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
             for(int i = 0; i < ea.size(); ++i) {
@@ -1288,7 +1290,9 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
                     mask_v[i]=1;
                 }
             }
+#ifdef DEBUG_PRINTOUT
             cout << "using mask: " << mask_v << endl;
+#endif
             ZZX mask;
             ea.encode(mask, mask_v);
             for (int i = 0; i < cc.size(); ++i) {
@@ -1309,7 +1313,9 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
                     mask_v[i]=1;
                 }
             }
+#ifdef DEBUG_PRINTOUT
             cout << "using mask: " << mask_v << endl;
+#endif
             ZZX mask;
             ea.encode(mask, mask_v);
             for (int i = 0; i < dd.size(); ++i) {
