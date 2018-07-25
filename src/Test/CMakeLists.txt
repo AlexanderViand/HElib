@@ -1,4 +1,4 @@
-file(GLOB TEST_FILES RELATIVE "${CMAKE_SOURCE_DIR}/src/test" "${CMAKE_SOURCE_DIR}/src/test" "Test_*.cpp")
+file(GLOB TEST_FILES RELATIVE "${PROJECT_SOURCE_DIR}/src/test" "${PROJECT_SOURCE_DIR}/src/test" "Test_*.cpp")
 
 if (ENABLE_TEST)
     foreach(TEST_FILE ${TEST_FILES})

@@ -1,5 +1,5 @@
-file(GLOB HELIB_SRC_FILES RELATIVE "${CMAKE_SOURCE_DIR}/src" "*.cpp")
-file(GLOB HELIB_HDR_FILES RELATIVE "${CMAKE_SOURCE_DIR}/src" "*.h")
+file(GLOB HELIB_SRC_FILES RELATIVE "${PROJECT_SOURCE_DIR}/src" "*.cpp")
+file(GLOB HELIB_HDR_FILES RELATIVE "${PROJECT_SOURCE_DIR}/src" "*.h")
 
 ## Remove test files from the source file list.
 foreach(prg ${TEST_FILES})
@@ -17,7 +17,7 @@ if (ENABLE_DEBUG)
 endif(ENABLE_DEBUG)
 
 if (BUILD_AES)
-    include_directories("${CMAKE_SOURCE_DIR}/src")
+    include_directories("${PROJECT_SOURCE_DIR}/src")
     add_subdirectory(aes)
 endif(BUILD_AES)
 

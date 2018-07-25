@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
 project(fhe)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 option(ENABLE_TEST "Build the test files" OFF)
 option(ENABLE_THREADS "To use multi-thread. Make Sure the NTL is built with NTL_THREADS=on" OFF)
