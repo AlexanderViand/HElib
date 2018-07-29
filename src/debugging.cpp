@@ -13,8 +13,8 @@
 #include "debugging.h"
 NTL_CLIENT
 
-FHESecKey* dbgKey;
-EncryptedArray* dbgEa;
+const FHESecKey* dbgKey;
+const EncryptedArray* dbgEa;
 NTL::ZZX dbg_ptxt;
 NTL::Vec<NTL::ZZ> ptxt_pwr; // powerful basis
 

@@ -22,8 +22,8 @@
 #define FLAG_PRINT_POLY 2
 #define FLAG_PRINT_VEC  4
 
-extern FHESecKey* dbgKey;
-extern EncryptedArray* dbgEa;
+extern const FHESecKey* dbgKey;
+extern const EncryptedArray* dbgEa;
 extern NTL::ZZX dbg_ptxt;
 extern NTL::Vec<NTL::ZZ> ptxt_pwr; // powerful basis
 
