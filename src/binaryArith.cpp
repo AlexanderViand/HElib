@@ -1060,7 +1060,7 @@ void rotate(CtPtrs &number, long k) {
 }
 
 // Takes three integers a,b,c,d (CtPtrs) and recursively performs three-4-two among the slots
-void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_slots, long total_active_slots) {
+void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long interval, long total_active_slots) {
 
 #ifdef DEBUG_PRINTOUT
         cout << "Recursion called with slots: " << active_slots << ", \na: ";
@@ -1105,9 +1105,9 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
 #endif
 
 
-    if (active_slots > 1) {
+    if (interval > 1) {
         // shift each of them down by half to get another four numbers
-        long s = active_slots + (active_slots % 2);
+        long s = interval + (interval % 2);
         std::vector<Ctxt> x2rot_t(x2.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
         std::vector<Ctxt> y2rot_t(y2.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
         //TODO: Write a vecCopy between CtPtrs and/or from CtPtrs to vector<Ctxt(*)>
@@ -1121,7 +1121,7 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
         rotate(x2rot, -s / 2);
         rotate(y2rot, -s / 2);
 
-        if (active_slots % 2 != 0) {
+        if (interval % 2 != 0) {
 #ifdef DEBUG_PRINTOUT
             cout << "not an even number of slots: using mask";
 #endif
@@ -1184,7 +1184,7 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long active_s
 }
 
 
-void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zzX> *unpackSlotEncoding) {
+void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vector<zzX> *unpackSlotEncoding) {
 #ifdef DEBUG_PRINTOUT
     dbg_total_slots = active_slots;
 #endif
@@ -1200,11 +1200,11 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
     const EncryptedArray &ea = *(ct_ptr->getContext().ea);
     bool bootstrappable = ct_ptr->getPubKey().isBootstrappable();
 
-    if (active_slots <= 1) {
+    if (interval <= 1) {
         // no slots to sum up
         vecCopy(sum, number);
         return;
-    } else if (active_slots == 2) {
+    } else if (interval == 2) {
         // Do direct addition
         vector<Ctxt> a, b;
         vecCopy(a, number);
@@ -1220,7 +1220,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
 #endif
         addTwoNumbers(sum, aa, bb, 0, unpackSlotEncoding);
         return;
-    } else if (active_slots == 3) {
+    } else if (interval == 3) {
         // Directly apply one step of three4two
         vector<Ctxt> b, c, x, y;
         vecCopy(b, number);
@@ -1275,7 +1275,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
         vecCopy(d, number);
         CtPtrs_vectorCt aa(a), bb(b), cc(c), dd(d);
 
-        long s = ((active_slots + 3) / 4) * 4;
+        long s = ((interval + 3) / 4) * 4;
 #ifdef DEBUG_PRINTOUT
             cout << "s:" << s << endl;
 #endif
@@ -1283,7 +1283,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
         rotate(cc, -s / 2);
         rotate(dd, -3 * (s / 4));
 
-        if (active_slots == 5) {
+        if (interval == 5) {
             // special case, because c also needs masking!
 #ifdef DEBUG_PRINTOUT
                 cout << "applying special masking for 5" << endl;
@@ -1291,7 +1291,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
             // For the last one, we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
             for(int i = 0; i < ea.size(); ++i) {
-                if (i % active_slots == 0) {
+                if (i % interval == 0) {
                     mask_v[i]=1;
                 }
             }
@@ -1307,14 +1307,14 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
             for (int i = 0; i < dd.size(); ++i) {
                 dd[i]->DummyEncrypt(ZZX(0));
             }
-        } else if (active_slots % 4 != 0) {
+        } else if (interval % 4 != 0) {
 #ifdef DEBUG_PRINTOUT
                 cout << "applying masking" << endl;
 #endif
             // For the last one, we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
             for(int i = 0; i < ea.size(); ++i) {
-                if (i % active_slots < active_slots - 3*(s/4)) {
+                if (i % interval < interval - 3*(s/4)) {
 #ifdef DEBUG_PRINTOUT
                     cout << "setting " << i  << " = 1 << in mask" << endl;
 #endif
@@ -1344,8 +1344,9 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long active_slots, vector<zz
             cout << endl;
 #endif
 
+            //TODO: Sensible use of "interval" and "n" in internalAdd?
         // Now call Three4Two which will recurse until only two numbers are left
-        internalThree4Two(aa, bb, cc, dd, s / 4, active_slots);
+        internalThree4Two(aa, bb, cc, dd, s / 4, interval);
 
 
 #ifdef DEBUG_PRINTOUT
@@ -1454,7 +1455,7 @@ void internalMinHelper(CtPtrs &values, CtPtrs &indices, long interval, long sets
 
 
 
-void internalMin(CtPtrs &values, CtPtrs &indices, long interval, vector<zzX> *unpackSlotEncoding) {
+void internalMin(CtPtrs &values, CtPtrs &indices, long interval, long n, vector<zzX> *unpackSlotEncoding) {
 
     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = values.ptr2nonNull();
@@ -1472,7 +1473,7 @@ void internalMin(CtPtrs &values, CtPtrs &indices, long interval, vector<zzX> *un
 #endif
 
     const EncryptedArray &ea = *(ct_ptr->getContext().ea);
-    long sets = ea.size() / interval;
+    long sets = n; //ea.size() / interval;
     internalMinHelper(values,indices,interval,sets,unpackSlotEncoding);
 
 
