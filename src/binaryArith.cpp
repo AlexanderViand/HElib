@@ -1063,14 +1063,14 @@ void rotate(CtPtrs &number, long k) {
 void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long interval, long total_active_slots) {
 
 #ifdef DEBUG_PRINTOUT
-        cout << "Recursion called with slots: " << active_slots << ", \na: ";
-    printBinaryNums(a, *dbgKey, *dbgEa, false, active_slots);
+        cout << "Recursion called with interval: " << interval << ", \na: ";
+    printBinaryNums(a, *dbgKey, *dbgEa, false, interval);
         cout << ", \nb: ";
-    printBinaryNums(b, *dbgKey, *dbgEa, false, active_slots);
+    printBinaryNums(b, *dbgKey, *dbgEa, false, interval);
         cout << ", \nc: ";
-    printBinaryNums(c, *dbgKey, *dbgEa, false, active_slots);
+    printBinaryNums(c, *dbgKey, *dbgEa, false, interval);
         cout << ", \nd: ";
-    printBinaryNums(d, *dbgKey, *dbgEa, false, active_slots);
+    printBinaryNums(d, *dbgKey, *dbgEa, false, interval);
         cout << endl;
 #endif
 
@@ -1085,9 +1085,9 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long interval
 
 #ifdef DEBUG_PRINTOUT
         cout << "Result of first 3-4-2 is x1:";
-    printBinaryNums(x1, *dbgKey, *dbgEa, false, active_slots);
+    printBinaryNums(x1, *dbgKey, *dbgEa, false, interval);
         cout << " and y1: ";
-    printBinaryNums(y1, *dbgKey, *dbgEa, false, active_slots);
+    printBinaryNums(y1, *dbgKey, *dbgEa, false, interval);
         cout << endl;
 #endif
 
@@ -1098,9 +1098,9 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long interval
 
 #ifdef DEBUG_PRINTOUT
         cout << "Result of second 3-4-2 is x2:";
-    printBinaryNums(x2, *dbgKey, *dbgEa, false, active_slots);
+    printBinaryNums(x2, *dbgKey, *dbgEa, false, interval);
         cout << " and y2: ";
-    printBinaryNums(y2, *dbgKey, *dbgEa, false, active_slots);
+    printBinaryNums(y2, *dbgKey, *dbgEa, false, interval);
         cout << endl;
 #endif
 
@@ -1186,7 +1186,7 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long interval
 
 void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vector<zzX> *unpackSlotEncoding) {
 #ifdef DEBUG_PRINTOUT
-    dbg_total_slots = active_slots;
+    dbg_total_slots = interval;
 #endif
     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = number.ptr2nonNull();
@@ -1230,11 +1230,11 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
         rotate(cc, -2);
 #ifdef DEBUG_PRINTOUT
             cout << "Doing a single round of  3-4-2 with \na: ";
-        printBinaryNums(number, *dbgKey, *dbgEa, false, active_slots);
+        printBinaryNums(number, *dbgKey, *dbgEa, false, interval);
             cout << ", \nb: ";
-        printBinaryNums(bb, *dbgKey, *dbgEa, false, active_slots);
+        printBinaryNums(bb, *dbgKey, *dbgEa, false, interval);
             cout << ", \nc:";
-        printBinaryNums(cc, *dbgKey, *dbgEa, false, active_slots);
+        printBinaryNums(cc, *dbgKey, *dbgEa, false, interval);
             cout << endl;
 #endif
         three4Two(xx, yy, number, bb, cc, 0);
@@ -1251,7 +1251,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
         return;
     } else {
 #ifdef DEBUG_PRINTOUT
-            cout << "active_slots: " << active_slots << endl;
+            cout << "active_slots: " << interval << endl;
 #endif
         // There are two ways: Either have a pool of items,
         // with level and active slots, and then take them out and do 3-4-2 with that
@@ -1362,7 +1362,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
 
 #ifdef DEBUG_PRINTOUT
         cout << "internal sum is: ";
-        printBinaryNums(sum,*dbgKey,*dbgEa,false,1,active_slots);
+        printBinaryNums(sum,*dbgKey,*dbgEa,false,1,interval);
         cout << endl;
 #endif
     }
