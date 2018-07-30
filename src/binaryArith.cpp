@@ -302,8 +302,8 @@ void AddDAG::apply(CtPtrs &sum,
         sum[i]->clear();
 
     // Allow multi-threading in this loop
-    NTL_EXEC_RANGE(sizeLimit, first, last)
-                    for (long i = first; i < last; i++) { //  for (long i=0; i<sizeLimit; i++) {
+    //NTL_EXEC_RANGE(sizeLimit, first, last)
+    /* for (long i = first; i < last; i++) { //*/ for (long i=0; i<sizeLimit; i++) {
                         if (i < bSize)
                             addCtxtFromNode(*(sum[i]), this->findP(i, i), a, b);
                         for (long j = std::min(i - 1, aSize - 1); j >= 0; --j) {
@@ -311,7 +311,7 @@ void AddDAG::apply(CtPtrs &sum,
                             if (node != nullptr) addCtxtFromNode(*(sum[i]), node, a, b);
                         }
                     }
-    NTL_EXEC_RANGE_END
+    //NTL_EXEC_RANGE_END
 }
 
 //! Get the ciphertext for a node, compiuting it as needed
