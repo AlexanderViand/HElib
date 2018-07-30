@@ -290,7 +290,7 @@ int main(int argc, char *argv[]) {
     // Test internal addition
     {
         CtPtrs_VecCt eep(eInternalSum);  // A wrapper around the output vector
-        internalAdd(eep, CtPtrs_VecCt(eProduct), active_slots, &unpackSlotEncoding);
+        internalAdd(eep, CtPtrs_VecCt(eProduct), active_slots,-1, &unpackSlotEncoding);
         decryptBinaryNums(slots, eep, secKey, ea, true, true);
     } // get rid of the wrapper
 
@@ -360,7 +360,7 @@ int main(int argc, char *argv[]) {
     { // Wrapper
         CtPtrs_VecCt eev(eInternalSum);
         CtPtrs_VecCt eei(eIndices);
-        internalMin(eev, eei, active_slots, &unpackSlotEncoding);
+        internalMin(eev, eei, active_slots, ea.size()/active_slots, &unpackSlotEncoding);
         decryptBinaryNums(v_slots, eev, secKey, ea, true, true);
         decryptBinaryNums(i_slots, eei, secKey, ea, false, true);
     }

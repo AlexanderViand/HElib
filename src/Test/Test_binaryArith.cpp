@@ -444,7 +444,7 @@ void testInternalAdd(FHESecKey& secKey, long bitSize,
   // Test internal addition
   vector<long> slots;
   {CtPtrs_VecCt eep(eSum);  // A wrapper around the output vector
-    internalAdd(eep, CtPtrs_VecCt(enca), active_slots, &unpackSlotEncoding);
+    internalAdd(eep, CtPtrs_VecCt(enca), active_slots, -1, &unpackSlotEncoding);
     decryptBinaryNums(slots, eep, secKey, ea);
   } // get rid of the wrapper
   if (verbose) CheckCtxt(eSum[lsize(eSum)-1], "after internal addition");
@@ -544,7 +544,7 @@ void testInternalMin(FHESecKey &secKey, long bitSize, bool bootstrap) {
     { // Wrappers
       CtPtrs_VecCt eev(eValues);
       CtPtrs_VecCt eei(eIndices);
-      internalMin(eev, eei, interval, &unpackSlotEncoding);
+      internalMin(eev, eei, interval,-1, &unpackSlotEncoding);
       decryptBinaryNums(v_slots, eev, secKey, ea);
       decryptBinaryNums(i_slots, eei, secKey, ea);
     }
