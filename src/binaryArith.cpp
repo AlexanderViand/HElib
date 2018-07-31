@@ -1132,7 +1132,9 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long interval
                     mask_v[i]=1;
                 }
             }
+#ifdef DEBUG_PRINTOUT
             cout << mask_v << endl;
+#endif
            // std::fill_n(mask_v.begin(), s/2-1, 1);
             ZZX mask;
 
