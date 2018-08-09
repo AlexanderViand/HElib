@@ -257,7 +257,6 @@ int main(int argc, char *argv[]) {
     resize(eSum2, newSize, eSum2[eSum2.length() - 1]);
 
     // Now multiply
-    //TODO: Baugh-Wooley multiplier to avoid sign extension + do squaring optimization?
     NTL::Vec<Ctxt> eProduct;
     {
         CtPtrs_VecCt eep(eProduct);  // A wrappers around the output vector
@@ -387,8 +386,6 @@ int main(int argc, char *argv[]) {
             cout << "internalMin succeeded!" << endl;
         }
     }
-//TODO: Check min result
-
 
     return 0;
 }

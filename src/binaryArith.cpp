@@ -1123,7 +1123,6 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long interval
         long s = interval + (interval % 2);
         std::vector<Ctxt> x2rot_t(x2.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
         std::vector<Ctxt> y2rot_t(y2.size(), Ctxt(ZeroCtxtLike, *ct_ptr));
-        //TODO: Write a vecCopy between CtPtrs and/or from CtPtrs to vector<Ctxt(*)>
         for (int i = 0; i < x2.size(); ++i) {
             x2rot_t[i] = *x2[i];
         }
@@ -1187,7 +1186,6 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long interval
     }
 
     // Return result
-    //TODO: vecCopy for this?
     a.resize(x2.size());
     b.resize(y2.size());
     for (int i = 0; i < x2.size(); ++i) {
@@ -1276,7 +1274,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval_not_needed, lo
 
 //        if (bootstrappable) {
 //            // Check that we can actually do the next few steps
-//            if (findMinLevel(number) < 5) { //TODO: Figure out the exact number to use here
+//            if (findMinLevel(number) < 5) {
 //                assert(bootstrappable && unpackSlotEncoding != nullptr);
 //                packedRecrypt(number, *unpackSlotEncoding, ea, /*belowLvl=*/10);
 //            }
@@ -1361,7 +1359,6 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval_not_needed, lo
             cout << endl;
 #endif
 
-            //TODO: Sensible use of "interval" and "n" in internalAdd?
         // Now call Three4Two which will recurse until only two numbers are left
         internalThree4Two(aa, bb, cc, dd, s / 4, in_interval);
 
@@ -1388,12 +1385,6 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval_not_needed, lo
 
 void internalMinHelper(CtPtrs &values, CtPtrs &indices, long interval, long in_interval, long sets,
                        vector<zzX> *unpackSlotEncoding) {
-
-    //TODO: Version that can deal with blocks with more than one element per block?
-    // Do so by reducing "in_interval" to 1 here, with simple shifts and compares?
-    // No, add proper logic for that!
-
-    assert(in_interval == 1);
 
     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = values.ptr2nonNull();
@@ -1468,7 +1459,6 @@ void internalMinHelper(CtPtrs &values, CtPtrs &indices, long interval, long in_i
     internalMinHelper(mmin, indices, interval, in_interval, sets / 2, unpackSlotEncoding);
 
     // Done, let's return the value we got from recursion
-    //TODO: vecCopy for this?
     values.resize(mmin.size()); //should do nothing, but let's be safe
     for (int i = 0; i < mmin.size(); ++i) {
         *values[i] = *mmin[i];
