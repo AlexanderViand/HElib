@@ -61,5 +61,5 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long in_inter
 
 //! Minimum. Takes two inputs: One a list of values, the other a list of indices (or other associated data)
 //! Will return the minimum of values in slot 0 of values, and the corresponding element of indices there, also slot 0
-void internalMin(CtPtrs &values, CtPtrs &indices, long interval, long in_interval, vector<zzX> *unpackSlotEncoding = nullptr);
+void internalMin(CtPtrs &values, CtPtrs &indices, long interval, long in_interval, long sets, vector<zzX> *unpackSlotEncoding = nullptr);
 #endif // ifndef _BINARY_ARITH_H_

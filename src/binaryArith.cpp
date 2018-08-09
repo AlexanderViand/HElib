@@ -1478,7 +1478,7 @@ void internalMinHelper(CtPtrs &values, CtPtrs &indices, long interval, long in_i
 
 
 
-void internalMin(CtPtrs &values, CtPtrs &indices, long interval, long in_interval, vector<zzX> *unpackSlotEncoding) {
+void internalMin(CtPtrs &values, CtPtrs &indices, long interval, long in_interval, long sets, vector<zzX> *unpackSlotEncoding) {
 
     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = values.ptr2nonNull();
@@ -1497,7 +1497,6 @@ void internalMin(CtPtrs &values, CtPtrs &indices, long interval, long in_interva
 #endif
 
     const EncryptedArray &ea = *(ct_ptr->getContext().ea);
-    long sets =  ea.size() / interval;
     internalMinHelper(values, indices, interval, in_interval, sets, unpackSlotEncoding);
 
 
