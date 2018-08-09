@@ -544,7 +544,7 @@ void testInternalMin(FHESecKey &secKey, long bitSize, bool bootstrap) {
     { // Wrappers
       CtPtrs_VecCt eev(eValues);
       CtPtrs_VecCt eei(eIndices);
-      internalMin(eev, eei, interval,-1, &unpackSlotEncoding);
+      internalMin(eev, eei, interval, ea.size(), 1, &unpackSlotEncoding);
       decryptBinaryNums(v_slots, eev, secKey, ea);
       decryptBinaryNums(i_slots, eei, secKey, ea);
     }

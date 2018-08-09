@@ -360,7 +360,7 @@ int main(int argc, char *argv[]) {
     { // Wrapper
         CtPtrs_VecCt eev(eInternalSum);
         CtPtrs_VecCt eei(eIndices);
-        internalMin(eev, eei, active_slots, ea.size()/active_slots, &unpackSlotEncoding);
+       // internalMin(eev, eei, active_slots, ea.size()/active_slots, &unpackSlotEncoding);
         decryptBinaryNums(v_slots, eev, secKey, ea, true, true);
         decryptBinaryNums(i_slots, eei, secKey, ea, false, true);
     }
