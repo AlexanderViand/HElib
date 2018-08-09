@@ -450,6 +450,14 @@ void addTwoNumbers(CtPtrs &sum, const CtPtrs &a, const CtPtrs &b,
         return;
     }
 
+#ifdef  DEBUG_PRINTOUT //print inputs
+    vector<long> slots;
+    decryptBinaryNums(slots, a, *dbgKey, *dbgEa, true);
+    cout << "a:" << slots << endl;
+    decryptBinaryNums(slots, b, *dbgKey, *dbgEa, true);
+    cout << "b:" << slots << endl;
+#endif
+
     // Work out the order of multiplications to compute all the carry bits
     AddDAG addPlan(a, b);
 
@@ -467,6 +475,11 @@ void addTwoNumbers(CtPtrs &sum, const CtPtrs &a, const CtPtrs &b,
 //        }
 //    }
     addPlan.apply(sum, a, b, sizeLimit);    // perform the actual addition
+
+#ifdef  DEBUG_PRINTOUT //print result
+    decryptBinaryNums(slots, sum, *dbgKey, *dbgEa, true);
+    cout << "Result of addition:" << slots << endl;
+#endif
 }
 
 // Return pointers to the three inputs, ordered by size
@@ -1186,9 +1199,11 @@ void internalThree4Two(CtPtrs &a, CtPtrs &b, CtPtrs &c, CtPtrs &d, long interval
 }
 
 
-void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vector<zzX> *unpackSlotEncoding) {
+void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval_not_needed, long in_interval, vector<zzX> *unpackSlotEncoding) {
+    // Because we do this across all slots, the length of the blocks doesn't really matter.
+    // If we have 10 blocks or 1, we still need to shift only based on in_interval
 #ifdef DEBUG_PRINTOUT
-    dbg_total_slots = interval;
+    dbg_total_slots = in_interval;
 #endif
     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = number.ptr2nonNull();
@@ -1202,11 +1217,11 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
     const EncryptedArray &ea = *(ct_ptr->getContext().ea);
     bool bootstrappable = ct_ptr->getPubKey().isBootstrappable();
 
-    if (interval <= 1) {
+    if (in_interval <= 1) {
         // no slots to sum up
         vecCopy(sum, number);
         return;
-    } else if (interval == 2) {
+    } else if (in_interval == 2) {
         // Do direct addition
         vector<Ctxt> a, b;
         vecCopy(a, number);
@@ -1222,7 +1237,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
 #endif
         addTwoNumbers(sum, aa, bb, 0, unpackSlotEncoding);
         return;
-    } else if (interval == 3) {
+    } else if (in_interval == 3) {
         // Directly apply one step of three4two
         vector<Ctxt> b, c, x, y;
         vecCopy(b, number);
@@ -1232,11 +1247,11 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
         rotate(cc, -2);
 #ifdef DEBUG_PRINTOUT
             cout << "Doing a single round of  3-4-2 with \na: ";
-        printBinaryNums(number, *dbgKey, *dbgEa, false, interval);
+        printBinaryNums(number, *dbgKey, *dbgEa, false, in_interval);
             cout << ", \nb: ";
-        printBinaryNums(bb, *dbgKey, *dbgEa, false, interval);
+        printBinaryNums(bb, *dbgKey, *dbgEa, false, in_interval);
             cout << ", \nc:";
-        printBinaryNums(cc, *dbgKey, *dbgEa, false, interval);
+        printBinaryNums(cc, *dbgKey, *dbgEa, false, in_interval);
             cout << endl;
 #endif
         three4Two(xx, yy, number, bb, cc, 0);
@@ -1253,7 +1268,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
         return;
     } else {
 #ifdef DEBUG_PRINTOUT
-            cout << "active_slots: " << interval << endl;
+            cout << "active_slots: " << in_interval << endl;
 #endif
         // There are two ways: Either have a pool of items,
         // with level and active slots, and then take them out and do 3-4-2 with that
@@ -1277,7 +1292,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
         vecCopy(d, number);
         CtPtrs_vectorCt aa(a), bb(b), cc(c), dd(d);
 
-        long s = ((interval + 3) / 4) * 4;
+        long s = ((in_interval + 3) / 4) * 4;
 #ifdef DEBUG_PRINTOUT
             cout << "s:" << s << endl;
 #endif
@@ -1285,7 +1300,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
         rotate(cc, -s / 2);
         rotate(dd, -3 * (s / 4));
 
-        if (interval == 5) {
+        if (in_interval == 5) {
             // special case, because c also needs masking!
 #ifdef DEBUG_PRINTOUT
                 cout << "applying special masking for 5" << endl;
@@ -1293,7 +1308,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
             // For the last one, we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
             for(int i = 0; i < ea.size(); ++i) {
-                if (i % interval == 0) {
+                if (i % in_interval == 0) {
                     mask_v[i]=1;
                 }
             }
@@ -1309,14 +1324,14 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
             for (int i = 0; i < dd.size(); ++i) {
                 dd[i]->DummyEncrypt(ZZX(0));
             }
-        } else if (interval % 4 != 0) {
+        } else if (in_interval % 4 != 0) {
 #ifdef DEBUG_PRINTOUT
                 cout << "applying masking" << endl;
 #endif
             // For the last one, we rotated some "garbage" down, too: clear it
             vector<long> mask_v(ea.size());
             for(int i = 0; i < ea.size(); ++i) {
-                if (i % interval < interval - 3*(s/4)) {
+                if (i % in_interval < in_interval - 3*(s/4)) {
 #ifdef DEBUG_PRINTOUT
                     cout << "setting " << i  << " = 1 << in mask" << endl;
 #endif
@@ -1348,7 +1363,7 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
 
             //TODO: Sensible use of "interval" and "n" in internalAdd?
         // Now call Three4Two which will recurse until only two numbers are left
-        internalThree4Two(aa, bb, cc, dd, s / 4, interval);
+        internalThree4Two(aa, bb, cc, dd, s / 4, in_interval);
 
 
 #ifdef DEBUG_PRINTOUT
@@ -1364,15 +1379,21 @@ void internalAdd(CtPtrs &sum, const CtPtrs &number, long interval, long n, vecto
 
 #ifdef DEBUG_PRINTOUT
         cout << "internal sum is: ";
-        printBinaryNums(sum,*dbgKey,*dbgEa,false,1,interval);
+        printBinaryNums(sum,*dbgKey,*dbgEa,false,1,in_interval);
         cout << endl;
 #endif
     }
 
 }
 
-void internalMinHelper(CtPtrs &values, CtPtrs &indices, long interval, long sets, vector<zzX> *unpackSlotEncoding) {
+void internalMinHelper(CtPtrs &values, CtPtrs &indices, long interval, long in_interval, long sets,
+                       vector<zzX> *unpackSlotEncoding) {
 
+    //TODO: Version that can deal with blocks with more than one element per block?
+    // Do so by reducing "in_interval" to 1 here, with simple shifts and compares?
+    // No, add proper logic for that!
+
+    assert(in_interval == 1);
 
     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = values.ptr2nonNull();
@@ -1444,7 +1465,7 @@ void internalMinHelper(CtPtrs &values, CtPtrs &indices, long interval, long sets
     }
 
     // now we can recurse!
-    internalMinHelper(mmin, indices, interval, sets / 2, unpackSlotEncoding);
+    internalMinHelper(mmin, indices, interval, in_interval, sets / 2, unpackSlotEncoding);
 
     // Done, let's return the value we got from recursion
     //TODO: vecCopy for this?
@@ -1457,7 +1478,7 @@ void internalMinHelper(CtPtrs &values, CtPtrs &indices, long interval, long sets
 
 
 
-void internalMin(CtPtrs &values, CtPtrs &indices, long interval, long n, vector<zzX> *unpackSlotEncoding) {
+void internalMin(CtPtrs &values, CtPtrs &indices, long interval, long in_interval, vector<zzX> *unpackSlotEncoding) {
 
     /// Non-null pointer to one of the Ctxt representing an input bit
     const Ctxt *ct_ptr = values.ptr2nonNull();
@@ -1472,11 +1493,12 @@ void internalMin(CtPtrs &values, CtPtrs &indices, long interval, long n, vector<
     printBinaryNums(values,*dbgKey,*dbgEa,true,1);
     cout << "\n with interval " << interval << " and indices: \n";
     printBinaryNums(indices,*dbgKey,*dbgEa,true,1);
+    cout << endl;
 #endif
 
     const EncryptedArray &ea = *(ct_ptr->getContext().ea);
-    long sets = n; //ea.size() / interval;
-    internalMinHelper(values,indices,interval,sets,unpackSlotEncoding);
+    long sets =  ea.size() / interval;
+    internalMinHelper(values, indices, interval, in_interval, sets, unpackSlotEncoding);
 
 
 
